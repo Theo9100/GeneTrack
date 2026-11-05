@@ -1,4 +1,4 @@
-import type { Animal, Data, Repro, Velage } from './types'
+import type { Animal, Chaleur, Data, Repro, Velage } from './types'
 
 // ---------- Dates (chaînes YYYY-MM-DD, calcul en UTC pour éviter les décalages d'heure d'été) ----------
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -108,7 +108,7 @@ export const withdrawalEnd = (date: string, delaiJours: number) =>
   delaiJours > 0 ? addDays(date, delaiJours) : ''
 
 // ---------- Alertes / agenda ----------
-export type AlerteKind = 'velage' | 'diag' | 'rappel' | 'attente'
+export type AlerteKind = 'velage' | 'chaleur' | 'diag' | 'rappel' | 'attente'
 export interface Alerte {
   uid: string
   kind: AlerteKind
@@ -120,14 +120,67 @@ export interface Alerte {
   retard: boolean
 }
 
+// ---------- Chaleurs ----------
+export const CYCLE_JOURS = 21
+
+/**
+ * Prochaine chaleur à surveiller pour une femelle :
+ * - après une saillie/IA non confirmée : retour possible à J+21 (sinon elle est probablement pleine) ;
+ * - sinon, projection du cycle de 21 j depuis la dernière chaleur observée (ou la dernière saillie « vide »),
+ *   sur 3 cycles au plus, jamais avant le dernier vêlage.
+ */
+export function prochaineChaleur(
+  vacheId: string,
+  data: { repros: Repro[]; chaleurs: Chaleur[]; velages: Velage[] },
+  today: string,
+): { date: string; type: 'retour' | 'cycle'; depuis: string } | null {
+  const lastVel = data.velages.filter((v) => v.mereId === vacheId).map((v) => v.date).sort().pop() ?? ''
+  const repros = data.repros.filter((r) => r.vacheId === vacheId && r.date > lastVel).sort((a, b) => a.date.localeCompare(b.date))
+  const lastR = repros[repros.length - 1]
+  const lastC = data.chaleurs.filter((c) => c.vacheId === vacheId && c.date > lastVel).map((c) => c.date).sort().pop() ?? ''
+  if (lastR && !lastR.velageId && lastR.diagResultat !== 'vide' && lastR.date >= lastC) {
+    if (lastR.diagResultat === 'pleine') return null
+    const d = addDays(lastR.date, CYCLE_JOURS)
+    return diffDays(d, today) <= 3 ? { date: d, type: 'retour', depuis: lastR.date } : null
+  }
+  const ref = [lastC, lastR?.diagResultat === 'vide' ? lastR.date : ''].sort().pop()
+  if (!ref) return null
+  for (let k = 1; k <= 3; k++) {
+    const d = addDays(ref, k * CYCLE_JOURS)
+    if (diffDays(d, today) <= 2) return { date: d, type: 'cycle', depuis: ref }
+  }
+  return null
+}
+
 export function agenda(
-  data: Pick<Data, 'animals' | 'repros' | 'soins' | 'gest'>,
+  data: Pick<Data, 'animals' | 'repros' | 'soins' | 'gest'> & Partial<Pick<Data, 'chaleurs' | 'velages'>>,
   today: string,
   horizon: { velage: number; autre: number } = { velage: 90, autre: 30 },
 ): Alerte[] {
   const byId = new Map(data.animals.map((a) => [a.id, a]))
   const present = (id: string) => byId.get(id)?.statut === 'present'
   const out: Alerte[] = []
+
+  const chaleurs = data.chaleurs ?? []
+  const velages = data.velages ?? []
+  const calved = calvedSet(data.animals, velages)
+  for (const a of data.animals) {
+    if (a.sexe !== 'F' || a.statut !== 'present') continue
+    const c = categorie(a, today, calved)
+    if (c === 'veau') continue
+    const p = prochaineChaleur(a.id, { repros: data.repros, chaleurs, velages }, today)
+    if (!p || diffDays(today, p.date) > horizon.autre) continue
+    out.push({
+      uid: `chaleur-${a.id}-${p.date}`,
+      kind: 'chaleur',
+      date: p.date,
+      titre: `${p.type === 'retour' ? 'Retour en chaleur possible' : 'Chaleurs prévues'} : ${label(a)}`,
+      detail: p.type === 'retour' ? `21 j après la saillie/IA du ${formatDate(p.depuis)}. Pas de chaleur = probablement pleine.` : `Cycle de 21 j depuis le ${formatDate(p.depuis)}`,
+      animalIds: [a.id],
+      lien: `/animaux/${a.id}`,
+      retard: false,
+    })
+  }
 
   for (const r of data.repros) {
     if (r.velageId || !present(r.vacheId)) continue
@@ -197,6 +250,22 @@ export function agenda(
   return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 
+// ---------- Alertes par e-mail ----------
+/** Nombre de jours avant l'événement auxquels un e-mail est envoyé. */
+export const DELAIS_ALERTE: Record<AlerteKind, number[]> = {
+  velage: [7, 2],
+  chaleur: [2],
+  diag: [3],
+  rappel: [3],
+  attente: [],
+}
+
+/** Événements pour lesquels un e-mail doit partir aujourd'hui. */
+export function alertesDuJour(data: Data, today: string, delais = DELAIS_ALERTE): Alerte[] {
+  const max = Math.max(...Object.values(delais).flat(), 0)
+  return agenda(data, today, { velage: max, autre: max }).filter((e) => delais[e.kind].includes(diffDays(today, e.date)))
+}
+
 // ---------- Export calendrier (.ics) ----------
 const icsEsc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
 const icsDate = (iso: string) => iso.replace(/-/g, '')
@@ -216,7 +285,7 @@ export function buildIcs(events: Alerte[], now = new Date()): string {
       'BEGIN:VALARM',
       'ACTION:DISPLAY',
       `DESCRIPTION:${icsEsc(e.titre)}`,
-      `TRIGGER:-P${e.kind === 'velage' ? 7 : 2}D`,
+      `TRIGGER:-P${e.kind === 'velage' ? 7 : e.kind === 'chaleur' ? 1 : 2}D`,
       'END:VALARM',
       'END:VEVENT',
     )

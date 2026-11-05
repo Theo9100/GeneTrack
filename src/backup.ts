@@ -11,19 +11,21 @@ export interface BackupFile {
   velages: unknown[]
   soins: unknown[]
   mouvements: unknown[]
+  chaleurs: unknown[]
 }
 
 export async function exportData(): Promise<BackupFile> {
-  const [animals, repros, velages, soins, mouvements, gestationJours] = await Promise.all([
+  const [animals, repros, velages, soins, mouvements, chaleurs, gestationJours] = await Promise.all([
     db.animals.toArray(),
     db.repros.toArray(),
     db.velages.toArray(),
     db.soins.toArray(),
     db.mouvements.toArray(),
+    db.chaleurs.toArray(),
     getSetting<number>('gestationJours', GESTATION_DEFAUT),
   ])
   await setSetting('lastBackup', Date.now())
-  return { app: 'genetrack', version: 1, exportedAt: new Date().toISOString(), gestationJours, animals, repros, velages, soins, mouvements }
+  return { app: 'genetrack', version: 1, exportedAt: new Date().toISOString(), gestationJours, animals, repros, velages, soins, mouvements, chaleurs }
 }
 
 export function parseBackup(text: string): BackupFile {
@@ -34,6 +36,8 @@ export function parseBackup(text: string): BackupFile {
     throw new Error("Le fichier n'est pas un JSON valide.")
   }
   if (!obj || obj.app !== 'genetrack' || obj.version !== 1) throw new Error("Ce fichier n'est pas une sauvegarde GeneTrack.")
+  // les sauvegardes antérieures à l'ajout des chaleurs restent valides
+  if (obj.chaleurs === undefined) obj.chaleurs = []
   for (const t of TABLES) {
     if (!Array.isArray(obj[t])) throw new Error(`Sauvegarde incomplète : « ${t} » manquant.`)
     for (const r of obj[t]) if (!r || typeof r.id !== 'string') throw new Error(`Sauvegarde corrompue : enregistrement sans identifiant dans « ${t} ».`)
@@ -60,7 +64,8 @@ export async function importData(file: BackupFile, mode: 'replace' | 'merge'): P
       const table = tables[i]
       const rows = file[name] as { id: string; updatedAt: number }[]
       if (mode === 'replace') {
-        await table.clear()
+        // suppression clé par clé (et non clear()) pour que la synchronisation voie les suppressions
+        await table.bulkDelete((await table.toCollection().primaryKeys()) as string[])
         await table.bulkPut(rows)
         report.ajoutes += rows.length
         continue

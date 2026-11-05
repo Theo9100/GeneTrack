@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
-import { Baby, CalendarHeart, ChevronRight, Plus, Save, Settings, Syringe, Truck } from 'lucide-preact'
+import { Baby, CalendarHeart, ChevronRight, Flame, Plus, Save, Settings, Syringe, Truck } from 'lucide-preact'
 import { getSetting } from '../db'
 import type { Data } from '../types'
 import { Badge, Card, DateChip, Empty, Page } from '../ui'
+import { SyncBadge } from '../syncbadge'
 import { agenda, calvedSet, categorie, diffDays, isoToday, type AlerteKind, type Categorie } from '../logic'
 
 const SECTIONS: { kind: AlerteKind; titre: string; vide: string }[] = [
   { kind: 'velage', titre: 'Vêlages à venir', vide: 'Aucun vêlage prévu dans les 90 jours.' },
+  { kind: 'chaleur', titre: 'Chaleurs à surveiller', vide: 'Aucune chaleur prévue dans les 30 jours.' },
   { kind: 'diag', titre: 'Diagnostics de gestation', vide: 'Aucun diagnostic à faire prochainement.' },
   { kind: 'rappel', titre: 'Rappels de santé', vide: 'Aucun rappel dans les 30 jours.' },
   { kind: 'attente', titre: "Délais d'attente en cours", vide: "Aucun délai d'attente en cours." },
@@ -38,7 +40,7 @@ export function Accueil({ data }: { data: Data }) {
     <Page
       title="Troupeau"
       sub={`${jour} · ${present.length} ${present.length > 1 ? 'animaux présents' : 'animal présent'}`}
-      actions={<a class="btn icon-btn" href="#/reglages" aria-label="Réglages" title="Réglages"><Settings size={18} /></a>}
+      actions={<><SyncBadge /><a class="btn icon-btn" href="#/reglages" aria-label="Réglages" title="Réglages"><Settings size={18} /></a></>}
     >
       {besoinBackup && (
         <a class="banner" href="#/reglages">
@@ -59,6 +61,7 @@ export function Accueil({ data }: { data: Data }) {
       <div class="chips">
         <a class="btn small" href="#/animaux/new"><Plus size={16} />Animal</a>
         <a class="btn small" href="#/velages/new"><Baby size={16} />Vêlage</a>
+        <a class="btn small" href="#/chaleurs/new"><Flame size={16} />Chaleurs</a>
         <a class="btn small" href="#/repro/new"><CalendarHeart size={16} />Saillie / IA</a>
         <a class="btn small" href="#/sante/new"><Syringe size={16} />Soin</a>
         <a class="btn small" href="#/mouvements/new"><Truck size={16} />Vente</a>

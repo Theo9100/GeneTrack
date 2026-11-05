@@ -454,3 +454,10 @@ nav.tabs .brand, nav.tabs .spacer, nav.tabs .side-only { display: none; }
 .lock .mark { width: 54px; height: 54px; border-radius: 14px; display: block; margin-bottom: 18px; }
 .lock h1 { font: 600 30px/1.1 var(--serif); letter-spacing: -0.02em; margin: 0 0 4px; }
 .lock .sub { color: var(--ink-2); margin-bottom: 20px; font-size: 14.5px; }
+
+/* ---------- État de synchronisation ---------- */
+.btn.sync.synced { color: var(--ok); }
+.btn.sync.pending, .btn.sync.connecting { color: var(--warn); }
+.btn.sync.pending svg, .btn.sync.connecting svg { animation: spin 1.6s linear infinite; }
+.btn.sync.error { color: var(--bad); }
+@keyframes spin { to { transform: rotate(360deg); } }

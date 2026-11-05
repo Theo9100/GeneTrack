@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'preact/hooks'
-import { CalendarHeart, ChevronRight, Pencil, Plus, Syringe, Truck, Baby } from 'lucide-preact'
+import { CalendarHeart, ChevronRight, Flame, Pencil, Plus, Syringe, Truck, Baby } from 'lucide-preact'
 import { blankAnimal, db, save } from '../db'
 import type { Animal, Data, Statut } from '../types'
 import { Badge, Card, DateChip, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, go, nameOf, type FieldDef } from '../ui'
 import { FamilyTree } from '../tree'
 import {
-  CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, shortId, withdrawalEnd,
+  CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, prochaineChaleur, shortId, withdrawalEnd,
 } from '../logic'
 
 export const STATUT_LABEL: Record<Statut, string> = { present: 'Présent', vendu: 'Vendu', mort: 'Mort', reforme: 'Réformé' }
@@ -138,7 +138,9 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
   const velages = data.velages.filter((v) => v.mereId === id || v.veauId === id).sort((x, y) => y.date.localeCompare(x.date))
   const soins = data.soins.filter((s) => s.animalIds.includes(id)).sort((x, y) => y.date.localeCompare(x.date))
   const mvts = data.mouvements.filter((m) => m.animalId === id).sort((x, y) => y.date.localeCompare(x.date))
-  const refs = enfants.length + repros.length + velages.length + soins.length + mvts.length
+  const chaleurs = data.chaleurs.filter((c) => c.vacheId === id).sort((x, y) => y.date.localeCompare(x.date))
+  const prochaine = a && a.sexe === 'F' && a.statut === 'present' ? prochaineChaleur(id, data, today) : null
+  const refs = enfants.length + repros.length + velages.length + soins.length + mvts.length + chaleurs.length
   const c = categorie(a, today, calved)
   const enAttente = soins.some((s) => withdrawalEnd(s.date, s.delaiJours) >= today)
 
@@ -174,6 +176,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
 
       {a.statut === 'present' && (
         <div class="chips">
+          {a.sexe === 'F' && <a class="btn small" href={`#/chaleurs/new?vache=${id}`}><Flame size={16} />Chaleurs</a>}
           {a.sexe === 'F' && <a class="btn small" href={`#/repro/new?vache=${id}`}><CalendarHeart size={16} />Saillie / IA</a>}
           {a.sexe === 'F' && <a class="btn small" href={`#/velages/new?mere=${id}`}><Baby size={16} />Vêlage</a>}
           <a class="btn small" href={`#/sante/new?animal=${id}`}><Syringe size={16} />Soin</a>
@@ -192,6 +195,28 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
         </dl>
         {a.notes && <p style="margin:14px 0 0;color:var(--ink-2)">{a.notes}</p>}
       </Card>
+
+      {(chaleurs.length > 0 || prochaine) && (
+        <Card title="Chaleurs" count={chaleurs.length}>
+          {prochaine && (
+            <p class="banner" style="margin-bottom:10px">
+              <Flame size={18} />
+              <span>{prochaine.type === 'retour' ? 'Retour en chaleur possible' : 'Prochaines chaleurs prévues'} le <b>{formatDate(prochaine.date)}</b></span>
+            </p>
+          )}
+          <ul class="list">
+            {chaleurs.map((c) => (
+              <li key={c.id}>
+                <DateChip iso={c.date} />
+                <a class="item" href={`#/chaleurs/${c.id}`}>
+                  <b>Chaleurs observées</b>
+                  {c.notes && <small>{c.notes}</small>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {repros.length > 0 && (
         <Card title="Reproduction" count={repros.length}>

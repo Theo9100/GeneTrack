@@ -90,3 +90,52 @@ describe('exports', () => {
     expect(toCSV([{ a: 'x;y', b: 'say "hi"' }], ['a', 'b'])).toBe('﻿a;b\r\n"x;y";"say ""hi"""')
   })
 })
+
+import { alertesDuJour, prochaineChaleur } from '../src/logic'
+import { buildEmail } from '../src/emails'
+import type { Chaleur, Data, Velage } from '../src/types'
+
+describe('chaleurs', () => {
+  const C = (date: string): Chaleur => ({ id: 'c' + date, updatedAt: 0, vacheId: 'v', date, notes: '' })
+  const empty = { repros: [] as Repro[], chaleurs: [] as Chaleur[], velages: [] as Velage[] }
+  it('projette le cycle de 21 jours depuis la dernière chaleur', () => {
+    expect(prochaineChaleur('v', { ...empty, chaleurs: [C('2026-10-20')] }, '2026-11-01')).toMatchObject({ date: '2026-11-10', type: 'cycle' })
+    expect(prochaineChaleur('v', { ...empty, chaleurs: [C('2026-10-01')] }, '2026-11-01')).toMatchObject({ date: '2026-11-12' })
+    expect(prochaineChaleur('v', { ...empty, chaleurs: [C('2026-01-01')] }, '2026-11-01')).toBeNull()
+  })
+  it('annonce un retour possible 21 jours après une saillie non confirmée', () => {
+    expect(prochaineChaleur('v', { ...empty, repros: [R({ date: '2026-10-25' })], chaleurs: [C('2026-10-25')] }, '2026-11-01')).toMatchObject({ date: '2026-11-15', type: 'retour' })
+    expect(prochaineChaleur('v', { ...empty, repros: [R({ date: '2026-10-25', diagResultat: 'pleine' })] }, '2026-11-01')).toBeNull()
+  })
+  it('repart de la saillie quand la vache est vide', () => {
+    expect(prochaineChaleur('v', { ...empty, repros: [R({ date: '2026-10-20', diagResultat: 'vide' })] }, '2026-11-01')).toMatchObject({ date: '2026-11-10', type: 'cycle' })
+  })
+  it('ignore ce qui précède le dernier vêlage', () => {
+    const vel: Velage = { id: 'x', updatedAt: 0, mereId: 'v', date: '2026-10-25', veauId: '', sexe: 'F', facilite: 1, vigueur: 3, incidents: '', poids: null, morNe: false, reproId: '', notes: '' }
+    expect(prochaineChaleur('v', { ...empty, chaleurs: [C('2026-10-20')], velages: [vel] }, '2026-11-01')).toBeNull()
+  })
+})
+
+describe('alertes par e-mail', () => {
+  const data: Data = {
+    animals: [A('v', { nom: 'Rosa', travail: '12', naissance: '2020-01-01' })],
+    repros: [R({ date: addDays('2026-11-10', -285), diagResultat: 'pleine' })],
+    velages: [], soins: [], mouvements: [], gest: 285,
+    chaleurs: [{ id: 'c', updatedAt: 0, vacheId: 'v', date: '2026-10-22', notes: '' }],
+  }
+  it('envoie 7 et 2 jours avant le vêlage, 2 jours avant les chaleurs', () => {
+    expect(alertesDuJour(data, '2026-11-03').map((a) => a.kind)).toEqual(['velage'])
+    expect(alertesDuJour(data, '2026-11-08').map((a) => a.kind)).toEqual(['velage'])
+    expect(alertesDuJour(data, '2026-11-05')).toEqual([])
+    const d2 = { ...data, repros: [], chaleurs: [{ id: 'c', updatedAt: 0, vacheId: 'v', date: '2026-10-22', notes: '' }] }
+    expect(alertesDuJour(d2, '2026-11-10').map((a) => [a.kind, a.date])).toEqual([['chaleur', '2026-11-12']])
+  })
+  it('construit un e-mail lisible, et rien quand il n y a rien', () => {
+    const al = alertesDuJour(data, '2026-11-03')
+    const mail = buildEmail(al, '2026-11-03', 'https://exemple.github.io/GeneTrack/')!
+    expect(mail.subject).toBe('GeneTrack · 1 alerte : vêlages')
+    expect(mail.text).toContain('10/11/2026 (dans 7 jours)')
+    expect(mail.html).toContain('https://exemple.github.io/GeneTrack/#/repro/r1')
+    expect(buildEmail([], '2026-11-03', 'x')).toBeNull()
+  })
+})

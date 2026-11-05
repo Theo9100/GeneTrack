@@ -72,11 +72,19 @@ export interface Mouvement extends Base {
   notes: string
 }
 
+/** Chaleurs observées (le cycle de la vache dure environ 21 jours). */
+export interface Chaleur extends Base {
+  vacheId: string
+  date: string
+  notes: string
+}
+
 export interface Data {
   animals: Animal[]
   repros: Repro[]
   velages: Velage[]
   soins: Soin[]
   mouvements: Mouvement[]
+  chaleurs: Chaleur[]
   gest: number
 }

@@ -118,7 +118,7 @@ export function SearchInput({ value, onInput, placeholder }: { value: string; on
 export interface FieldDef {
   name: string
   label: string
-  type?: 'text' | 'date' | 'number' | 'select' | 'textarea' | 'checkbox' | 'password'
+  type?: 'text' | 'email' | 'date' | 'number' | 'select' | 'textarea' | 'checkbox' | 'password'
   options?: { value: string; label: string }[]
   required?: boolean
   hint?: string

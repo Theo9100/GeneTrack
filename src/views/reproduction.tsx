@@ -1,9 +1,9 @@
 import { useState } from 'preact/hooks'
 import { blankAnimal, db, save } from '../db'
-import type { Animal, Data, Repro, Velage } from '../types'
+import type { Animal, Chaleur, Data, Repro, Velage } from '../types'
 import { Plus } from 'lucide-preact'
 import { Badge, Card, DateChip, Empty, Form, Page, Tag, animalOptions, go, nameOf, type FieldDef, type Values } from '../ui'
-import { addDays, commonAncestors, diffDays, dueDate, formatDate, isoToday, label, normNumero } from '../logic'
+import { agenda, commonAncestors, diffDays, dueDate, formatDate, isoToday, label, normNumero } from '../logic'
 
 export function ListeRepro({ data }: { data: Data }) {
   const byId = new Map(data.animals.map((a) => [a.id, a]))
@@ -17,7 +17,12 @@ export function ListeRepro({ data }: { data: Data }) {
   const taureau = (r: Repro) => (r.taureauId ? label(byId.get(r.taureauId)) : r.taureauTexte || 'taureau inconnu')
 
   return (
-    <Page title="Reproduction" sub={`${enCours.length} gestation${enCours.length > 1 ? 's' : ''} en cours · ${data.gest} jours de gestation`} actions={<><a class="btn small" href="#/velages">Vêlages</a><a class="btn primary small" href="#/repro/new"><Plus size={16} />Saillie</a></>}>
+    <Page title="Reproduction" sub={`${enCours.length} gestation${enCours.length > 1 ? 's' : ''} en cours · ${data.gest} jours de gestation`} actions={<a class="btn primary small" href="#/repro/new"><Plus size={16} />Saillie</a>}>
+      <div class="chips">
+        <a class="btn small" href="#/chaleurs/new"><Plus size={16} />Chaleurs observées</a>
+        <a class="btn small" href="#/velages/new"><Plus size={16} />Vêlage</a>
+        <a class="btn small" href="#/velages">Tous les vêlages</a>
+      </div>
       <Card title="Gestations en cours" count={enCours.length}>
         {enCours.length ? (
           <ul class="list">
@@ -49,6 +54,7 @@ export function ListeRepro({ data }: { data: Data }) {
           <Empty>Aucune gestation en cours.</Empty>
         )}
       </Card>
+      <CarteChaleurs data={data} />
       <Card title="Historique">
         {autres.length ? (
           <ul class="list">
@@ -245,5 +251,87 @@ export function FormVelage({ data, id, mere }: { data: Data; id?: string; mere?:
         </Form>
       </Card>
     </Page>
+  )
+}
+
+// ---------- Chaleurs ----------
+export function FormChaleur({ data, id, vache }: { data: Data; id?: string; vache?: string }) {
+  const cur = id ? data.chaleurs.find((c) => c.id === id) : undefined
+  if (id && !cur) return <Page title="Introuvable" back="/repro"><Empty>Observation introuvable.</Empty></Page>
+  const femelles = data.animals.filter((a) => a.sexe === 'F' && (a.statut === 'present' || a.id === cur?.vacheId))
+  const fields: FieldDef[] = [
+    { name: 'vacheId', label: 'Vache / génisse', type: 'select', required: true, options: animalOptions(femelles, '— choisir —') },
+    { name: 'date', label: 'Date des chaleurs', type: 'date', required: true },
+    { name: 'notes', label: 'Observations', placeholder: 'ex. chevauchements, glaires, agitée…' },
+  ]
+  const initial: Values = cur ? { vacheId: cur.vacheId, date: cur.date, notes: cur.notes } : { vacheId: vache ?? '', date: isoToday(), notes: '' }
+  return (
+    <Page title={cur ? 'Modifier les chaleurs' : 'Chaleurs observées'} sub="Prochaines chaleurs prévues 21 jours plus tard" back="/repro">
+      <Card>
+        <Form
+          fields={fields}
+          initial={initial}
+          onSubmit={async (v) => {
+            if (!v.vacheId) throw new Error('Choisissez la vache.')
+            await save<Chaleur>('chaleurs', { ...(cur ?? {}), vacheId: String(v.vacheId), date: String(v.date), notes: String(v.notes).trim() } as Chaleur)
+            go('/repro')
+          }}
+        >
+          {cur && (
+            <button type="button" class="danger" onClick={async () => {
+              if (!confirm('Supprimer cette observation ?')) return
+              await db.chaleurs.delete(cur.id)
+              go('/repro')
+            }}>Supprimer</button>
+          )}
+        </Form>
+      </Card>
+    </Page>
+  )
+}
+
+export function CarteChaleurs({ data }: { data: Data }) {
+  const byId = new Map(data.animals.map((a) => [a.id, a]))
+  const today = isoToday()
+  const prevues = agenda(data, today).filter((a) => a.kind === 'chaleur')
+  const recentes = [...data.chaleurs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
+  return (
+    <Card title="Chaleurs" count={prevues.length}>
+      {prevues.length ? (
+        <ul class="list">
+          {prevues.map((a) => {
+            const j = diffDays(today, a.date)
+            return (
+              <li key={a.uid}>
+                <DateChip iso={a.date} tone={j <= 2 ? 'soon' : ''} />
+                <a class="item" href={'#' + a.lien}>
+                  <b>{a.titre.replace(/^[^:]+: /, '')}</b>
+                  <small>{a.titre.split(' : ')[0]} · {a.detail}</small>
+                </a>
+                <a class="btn small" href={`#/chaleurs/new?vache=${a.animalIds[0]}`} title="Noter des chaleurs observées">Noter</a>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <Empty>Aucune chaleur prévue dans les 30 jours. Notez les chaleurs observées pour que l'app calcule les suivantes.</Empty>
+      )}
+      {recentes.length > 0 && (
+        <>
+          <div class="section-title" style="margin-top:16px">Dernières observations</div>
+          <ul class="list">
+            {recentes.map((c) => (
+              <li key={c.id}>
+                <DateChip iso={c.date} />
+                <a class="item" href={`#/chaleurs/${c.id}`}>
+                  <b>{label(byId.get(c.vacheId))}</b>
+                  {c.notes && <small>{c.notes}</small>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
   )
 }

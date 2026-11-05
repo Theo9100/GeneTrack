@@ -5,6 +5,9 @@ import { setPassword, verifyPassword } from '../auth'
 import type { Data } from '../types'
 import { CalendarDays, Download, FileSpreadsheet, Lock as LockIcon } from 'lucide-preact'
 import { Card, Form, Page, download } from '../ui'
+import { cloudEnabled } from '../config'
+import { cloudLogout, useSyncStatus } from '../cloud'
+import { SYNC_LABEL } from '../syncbadge'
 import { agenda, buildIcs, isoToday, label, toCSV } from '../logic'
 
 export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
@@ -12,6 +15,7 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
   const [mode, setMode] = useState<'merge' | 'replace'>('merge')
   const [persist, setPersist] = useState<string>('')
   const [last, setLast] = useState<number | null>(null)
+  const sync = useSyncStatus()
   const today = isoToday()
   useEffect(() => {
     getSetting<number | null>('lastBackup', null).then(setLast)
@@ -46,6 +50,26 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
   return (
     <Page title="Réglages" sub="Sauvegardes, exports et sécurité" back="/">
       {msg && <p class={"banner " + (msg.startsWith('Erreur') ? 'bad' : 'ok')}>{msg}</p>}
+      <Card title="Synchronisation">
+        {cloudEnabled ? (
+          <>
+            <p>
+              <b>{SYNC_LABEL[sync.state]}</b>
+              {sync.email && <> · compte <b>{sync.email}</b></>}
+              {sync.lastSync && sync.state === 'synced' && <> · {new Date(sync.lastSync).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</>}
+            </p>
+            {sync.error && sync.state === 'error' && <p class="error">{sync.error}</p>}
+            <p><small>Toutes vos saisies sont envoyées automatiquement sur vos autres appareils connectés au même compte. Hors ligne, elles partent dès le retour du réseau.</small></p>
+            <button class="small" onClick={async () => {
+              if (!confirm('Se déconnecter ? Les données restent sur cet appareil mais ne seront plus synchronisées.')) return
+              await cloudLogout()
+              onLock()
+            }}>Se déconnecter</button>
+          </>
+        ) : (
+          <p><small>Non configurée : les données restent sur cet appareil. Pour synchroniser tous vos appareils (gratuit), suivez la section « Synchronisation » du README.</small></p>
+        )}
+      </Card>
       <Card title="Sauvegarde et transfert">
         <p>
           Vos données sont <b>uniquement sur cet appareil</b>. {last ? `Dernière sauvegarde : ${new Date(last).toLocaleDateString('fr-FR')}.` : 'Aucune sauvegarde faite.'} {persist}
@@ -76,6 +100,7 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
           <button class="small" onClick={() => csv('reproduction', data.repros.map((r) => ({ ...r, vache: label(byId.get(r.vacheId)), taureau: r.taureauId ? label(byId.get(r.taureauId)) : r.taureauTexte })), ['vache', 'type', 'date', 'taureau', 'diagResultat', 'diagDate', 'notes'])}>Reproduction</button>
           <button class="small" onClick={() => csv('velages', data.velages.map((v) => ({ ...v, mere: label(byId.get(v.mereId)), veau: label(byId.get(v.veauId)) })), ['date', 'mere', 'veau', 'sexe', 'morNe', 'facilite', 'vigueur', 'poids', 'incidents', 'notes'])}>Vêlages</button>
           <button class="small" onClick={() => csv('soins', data.soins.map((s) => ({ ...s, animaux: s.animalIds.map((i) => label(byId.get(i))) })), ['date', 'type', 'produit', 'dose', 'delaiJours', 'rappelDate', 'animaux', 'notes'])}>Soins</button>
+          <button class="small" onClick={() => csv('chaleurs', data.chaleurs.map((c) => ({ ...c, vache: label(byId.get(c.vacheId)) })), ['date', 'vache', 'notes'])}>Chaleurs</button>
           <button class="small" onClick={() => csv('mouvements', data.mouvements.map((m) => ({ ...m, animal: label(byId.get(m.animalId)) })), ['date', 'type', 'animal', 'acheteur', 'poids', 'prix', 'notes'])}>Mouvements</button>
         </div>
       </Card>

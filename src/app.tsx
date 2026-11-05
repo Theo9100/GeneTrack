@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'preact/hooks'
 import { CalendarHeart, House, Settings, Syringe, Truck } from 'lucide-preact'
 import { Lock } from './lock'
+import { startCloud } from './cloud'
 import { useData, useRoute } from './ui'
 import { Accueil } from './views/accueil'
 import { FicheAnimal, FormAnimal, ListeAnimaux } from './views/animaux'
-import { FormRepro, FormVelage, ListeRepro, ListeVelages } from './views/reproduction'
+import { FormChaleur, FormRepro, FormVelage, ListeRepro, ListeVelages } from './views/reproduction'
 import { FormSoin, ListeSoins } from './views/sante'
 import { FormMouvement, ListeMouvements } from './views/mouvements'
 import { Reglages } from './views/reglages'
@@ -40,7 +41,9 @@ export function App() {
     setUnlocked(false)
   }
   useEffect(() => {
-    if (unlocked) navigator.storage?.persist?.().catch(() => {})
+    if (!unlocked) return
+    navigator.storage?.persist?.().catch(() => {})
+    startCloud()
   }, [unlocked])
   if (!unlocked) return <Lock onUnlock={unlock} />
   return <Shell onLock={lock} />
@@ -64,6 +67,9 @@ function Shell({ onLock }: { onLock: () => void }) {
     case 'repro':
       view = !a ? <ListeRepro data={data} /> : a === 'new' ? <FormRepro data={data} vache={q.get('vache') ?? undefined} /> : <FormRepro data={data} id={a} />
       break
+    case 'chaleurs':
+      view = a === 'new' || !a ? <FormChaleur data={data} vache={q.get('vache') ?? undefined} /> : <FormChaleur data={data} id={a} />
+      break
     case 'velages':
       view = !a ? <ListeVelages data={data} /> : a === 'new' ? <FormVelage data={data} mere={q.get('mere') ?? undefined} /> : <FormVelage data={data} id={a} />
       break
@@ -79,7 +85,7 @@ function Shell({ onLock }: { onLock: () => void }) {
     default:
       view = <main><p class="empty">Page introuvable. <a href="#/">Accueil</a></p></main>
   }
-  const active = section === 'velages' ? 'repro' : (section ?? '')
+  const active = section === 'velages' || section === 'chaleurs' ? 'repro' : (section ?? '')
   return (
     <>
       {/* key = route complète : réinitialise l'état des formulaires à chaque changement de page */}

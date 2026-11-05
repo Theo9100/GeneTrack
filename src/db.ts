@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Animal, Data, Mouvement, Repro, Soin, Velage } from './types'
+import type { Animal, Chaleur, Data, Mouvement, Repro, Soin, Velage } from './types'
 
 export interface Setting {
   key: string
@@ -12,6 +12,7 @@ export class GeneDB extends Dexie {
   velages!: Table<Velage, string>
   soins!: Table<Soin, string>
   mouvements!: Table<Mouvement, string>
+  chaleurs!: Table<Chaleur, string>
   settings!: Table<Setting, string>
 
   constructor(name = 'genetrack') {
@@ -24,6 +25,8 @@ export class GeneDB extends Dexie {
       mouvements: 'id, animalId, date',
       settings: 'key',
     })
+    // v2 : ajout des chaleurs observées (les données existantes sont conservées)
+    this.version(2).stores({ chaleurs: 'id, vacheId, date' })
   }
 }
 
@@ -42,7 +45,7 @@ export function newId(): string {
   return 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
 }
 
-export const TABLES = ['animals', 'repros', 'velages', 'soins', 'mouvements'] as const
+export const TABLES = ['animals', 'repros', 'velages', 'soins', 'mouvements', 'chaleurs'] as const
 export type TableName = (typeof TABLES)[number]
 
 export async function getSetting<T>(key: string, def: T): Promise<T> {
@@ -61,15 +64,16 @@ export async function save<T extends { id: string; updatedAt: number }>(table: T
 }
 
 export async function loadAll(): Promise<Data> {
-  const [animals, repros, velages, soins, mouvements, gest] = await Promise.all([
+  const [animals, repros, velages, soins, mouvements, chaleurs, gest] = await Promise.all([
     db.animals.toArray(),
     db.repros.toArray(),
     db.velages.toArray(),
     db.soins.toArray(),
     db.mouvements.toArray(),
+    db.chaleurs.toArray(),
     getSetting<number>('gestationJours', GESTATION_DEFAUT),
   ])
-  return { animals, repros, velages, soins, mouvements, gest }
+  return { animals, repros, velages, soins, mouvements, chaleurs, gest }
 }
 
 export const blankAnimal = (): Omit<Animal, 'id' | 'updatedAt'> => ({
