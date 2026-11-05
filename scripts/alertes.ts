@@ -9,7 +9,7 @@
  *   npx tsx scripts/alertes.ts --file sauvegarde.json --date 2026-11-20 --dry-run
  */
 import { readFileSync } from 'node:fs'
-import { alertesDuJour, isoToday } from '../src/logic'
+import { agenda, alertesDuJour, isoToday } from '../src/logic'
 import { buildEmail } from '../src/emails'
 import type { Data } from '../src/types'
 
@@ -21,6 +21,7 @@ const arg = (name: string) => {
 const env = process.env
 const today = arg('--date') ?? isoToday()
 const dryRun = process.argv.includes('--dry-run')
+const test = process.argv.includes('--test') || env.ALERT_TEST === '1'
 const [owner, repo] = (env.GITHUB_REPOSITORY ?? '/').split('/')
 const appUrl = env.APP_URL || (owner ? `https://${owner.toLowerCase()}.github.io/${repo}/` : 'https://github.io/')
 const gestDefaut = Number(env.GESTATION_JOURS) || 285
@@ -56,8 +57,18 @@ async function main() {
   const herds = await troupeaux()
   for (const { id, data } of herds) {
     const alertes = alertesDuJour(data, today)
-    const mail = buildEmail(alertes, today, appUrl)
+    let mail = buildEmail(alertes, today, appUrl)
     console.log(`Troupeau ${id.slice(0, 6)}… : ${data.animals.length} animaux, ${alertes.length} alerte(s) le ${today}.`)
+    if (test) {
+      // E-mail de test : tous les événements des 30 prochains jours, pour vérifier l'envoi.
+      const prochains = agenda(data, today, { velage: 30, autre: 30 })
+      mail = buildEmail(prochains, today, appUrl) ?? {
+        subject: 'GeneTrack · e-mail de test',
+        text: `Les alertes GeneTrack fonctionnent. Aucun événement prévu dans les 30 prochains jours (${data.animals.length} animaux).\n\n${appUrl}`,
+        html: `<p style="font:15px Arial,sans-serif">Les alertes GeneTrack fonctionnent.<br>Aucun événement prévu dans les 30 prochains jours (${data.animals.length} animaux).</p><p><a href="${appUrl}">Ouvrir GeneTrack</a></p>`,
+      }
+      mail.subject = '[Test] ' + mail.subject
+    }
     if (!mail) continue
     if (dryRun) {
       console.log(`\nObjet : ${mail.subject}\n\n${mail.text}\n`)

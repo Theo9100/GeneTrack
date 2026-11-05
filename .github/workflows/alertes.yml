@@ -3,14 +3,19 @@ on:
   schedule:
     - cron: '23 5 * * *' # chaque jour à 5 h 23 UTC (6 h 23 l'hiver, 7 h 23 l'été à Paris)
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Envoyer un e-mail de test maintenant (même sans événement)"
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   alertes:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -23,3 +28,4 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
           GESTATION_JOURS: ${{ vars.GESTATION_JOURS }}
+          ALERT_TEST: ${{ inputs.test && '1' || '' }}
