@@ -3,7 +3,7 @@
 Application web (PWA) de gestion d'un troupeau de Blonde d'Aquitaine. Gratuite, sans serveur : **les données restent dans le navigateur de chaque appareil** (IndexedDB) et fonctionnent hors ligne. Cahier des charges : [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md).
 
 ## Fonctions de la V1
-Animaux (fiche, recherche, généalogie sur 3 générations), saillies/IA avec alerte de consanguinité, diagnostics, vêlages (création automatique du veau lié à ses parents), soins avec délais d'attente et rappels, ventes/sorties (une ou plusieurs bêtes à la fois), tableau de bord et alertes, export/import JSON, export CSV, export calendrier `.ics`, mot de passe unique.
+Animaux (fiche, recherche, arbre généalogique cliquable : grands-parents, parents, produits), saillies/IA avec alerte de consanguinité, diagnostics, vêlages (création automatique du veau lié à ses parents), soins avec délais d'attente et rappels, ventes/sorties (une ou plusieurs bêtes à la fois), tableau de bord et alertes, export/import JSON, export CSV, export calendrier `.ics`, mot de passe unique.
 
 ## Lancer en local (PC)
 ```bash

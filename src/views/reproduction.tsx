@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks'
 import { blankAnimal, db, save } from '../db'
 import type { Animal, Data, Repro, Velage } from '../types'
-import { Badge, Card, Empty, Form, Page, animalOptions, go, type FieldDef, type Values } from '../ui'
+import { Plus } from 'lucide-preact'
+import { Badge, Card, DateChip, Empty, Form, Page, Tag, animalOptions, go, nameOf, type FieldDef, type Values } from '../ui'
 import { addDays, commonAncestors, diffDays, dueDate, formatDate, isoToday, label, normNumero } from '../logic'
 
 export function ListeRepro({ data }: { data: Data }) {
@@ -16,8 +17,8 @@ export function ListeRepro({ data }: { data: Data }) {
   const taureau = (r: Repro) => (r.taureauId ? label(byId.get(r.taureauId)) : r.taureauTexte || 'taureau inconnu')
 
   return (
-    <Page title="Reproduction" actions={<><a class="btn small" href="#/velages">Vêlages</a><a class="btn primary small" href="#/repro/new">+ Saillie / IA</a></>}>
-      <Card title={`Gestations en cours (${enCours.length})`}>
+    <Page title="Reproduction" sub={`${enCours.length} gestation${enCours.length > 1 ? 's' : ''} en cours · ${data.gest} jours de gestation`} actions={<><a class="btn small" href="#/velages">Vêlages</a><a class="btn primary small" href="#/repro/new"><Plus size={16} />Saillie</a></>}>
+      <Card title="Gestations en cours" count={enCours.length}>
         {enCours.length ? (
           <ul class="list">
             {enCours.map((r) => {
@@ -25,10 +26,11 @@ export function ListeRepro({ data }: { data: Data }) {
               const j = diffDays(today, due)
               return (
                 <li key={r.id}>
+                  <Tag a={byId.get(r.vacheId)} />
                   <a class="item" href={`#/repro/${r.id}`}>
-                    <b>{label(byId.get(r.vacheId))}</b> · {r.type === 'IA' ? 'IA' : 'saillie'} {formatDate(r.date)}
+                    <b>{nameOf(byId.get(r.vacheId))}</b>
                     <small>
-                      {taureau(r)} · vêlage prévu le {formatDate(due)} ({j >= 0 ? `dans ${j} j` : `${-j} j de retard`})
+                      Vêlage le {formatDate(due)} · {j >= 0 ? `dans ${j} j` : `${-j} j de retard`} · {taureau(r)}
                     </small>
                   </a>
                   {r.diagResultat === 'pleine' ? (
@@ -52,9 +54,10 @@ export function ListeRepro({ data }: { data: Data }) {
           <ul class="list">
             {autres.map((r) => (
               <li key={r.id}>
+                <DateChip iso={r.date} />
                 <a class="item" href={`#/repro/${r.id}`}>
-                  {label(byId.get(r.vacheId))} · {r.type === 'IA' ? 'IA' : 'saillie'} {formatDate(r.date)}
-                  <small>{taureau(r)}</small>
+                  <b>{label(byId.get(r.vacheId))}</b>
+                  <small>{r.type === 'IA' ? 'IA' : 'Saillie'} · {taureau(r)}</small>
                 </a>
                 {r.velageId ? <Badge>Vêlé</Badge> : r.diagResultat === 'vide' ? <Badge tone="warn">Vide</Badge> : <Badge tone="grey">Clos</Badge>}
               </li>
@@ -143,14 +146,15 @@ export function ListeVelages({ data }: { data: Data }) {
   const byId = new Map(data.animals.map((a) => [a.id, a]))
   const rows = [...data.velages].sort((a, b) => b.date.localeCompare(a.date))
   return (
-    <Page title={`Vêlages (${rows.length})`} back="/repro" actions={<a class="btn primary small" href="#/velages/new">+ Vêlage</a>}>
+    <Page title="Vêlages" sub={`${rows.length} vêlage${rows.length > 1 ? 's' : ''} enregistré${rows.length > 1 ? 's' : ''}`} back="/repro" actions={<a class="btn primary small" href="#/velages/new"><Plus size={16} />Vêlage</a>}>
       <Card>
         {rows.length ? (
           <ul class="list">
             {rows.map((v) => (
               <li key={v.id}>
+                <DateChip iso={v.date} />
                 <a class="item" href={`#/velages/${v.id}`}>
-                  <b>{formatDate(v.date)}</b> · mère {label(byId.get(v.mereId))}
+                  <b>{label(byId.get(v.mereId))}</b>
                   <small>{v.morNe ? 'Veau mort-né' : `${label(byId.get(v.veauId))} (${v.sexe === 'F' ? 'femelle' : 'mâle'})`} · facilité {v.facilite}/4 · vigueur {v.vigueur}/4{v.poids ? ` · ${v.poids} kg` : ''}</small>
                 </a>
                 {v.facilite >= 3 && <Badge tone="warn">Difficile</Badge>}

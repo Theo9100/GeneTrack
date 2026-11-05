@@ -3,6 +3,7 @@ import { GESTATION_DEFAUT, getSetting, setSetting } from '../db'
 import { exportData, importData, parseBackup } from '../backup'
 import { setPassword, verifyPassword } from '../auth'
 import type { Data } from '../types'
+import { CalendarDays, Download, FileSpreadsheet, Lock as LockIcon } from 'lucide-preact'
 import { Card, Form, Page, download } from '../ui'
 import { agenda, buildIcs, isoToday, label, toCSV } from '../logic'
 
@@ -43,14 +44,14 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
   }
 
   return (
-    <Page title="Réglages" back="/">
-      {msg && <p class="banner">{msg}</p>}
+    <Page title="Réglages" sub="Sauvegardes, exports et sécurité" back="/">
+      {msg && <p class={"banner " + (msg.startsWith('Erreur') ? 'bad' : 'ok')}>{msg}</p>}
       <Card title="Sauvegarde et transfert">
         <p>
           Vos données sont <b>uniquement sur cet appareil</b>. {last ? `Dernière sauvegarde : ${new Date(last).toLocaleDateString('fr-FR')}.` : 'Aucune sauvegarde faite.'} {persist}
         </p>
         <div class="row">
-          <button class="primary" onClick={sauvegarder}>Exporter une sauvegarde (.json)</button>
+          <button class="primary" onClick={sauvegarder}><Download size={17} />Exporter une sauvegarde (.json)</button>
         </div>
         <hr />
         <label>
@@ -65,10 +66,11 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
       </Card>
       <Card title="Calendrier et tableurs">
         <div class="row">
-          <button onClick={ics}>Exporter le calendrier (.ics)</button>
+          <button onClick={ics}><CalendarDays size={17} />Exporter le calendrier (.ics)</button>
         </div>
         <small>À importer dans Google Calendar ou le Calendrier iPhone pour être prévenu par notification ou e-mail (vêlages, diagnostics, rappels).</small>
         <hr />
+        <div class="section-title"><FileSpreadsheet size={14} />Tableurs (CSV)</div>
         <div class="row">
           <button class="small" onClick={() => csv('animaux', data.animals.map((a) => ({ ...a, mere: label(byId.get(a.mereId)), pere: a.pereId ? label(byId.get(a.pereId)) : a.pereTexte })), ['numero', 'travail', 'nom', 'sexe', 'naissance', 'mere', 'pere', 'statut', 'dateSortie', 'notes'])}>Animaux</button>
           <button class="small" onClick={() => csv('reproduction', data.repros.map((r) => ({ ...r, vache: label(byId.get(r.vacheId)), taureau: r.taureauId ? label(byId.get(r.taureauId)) : r.taureauTexte })), ['vache', 'type', 'date', 'taureau', 'diagResultat', 'diagDate', 'notes'])}>Reproduction</button>
@@ -105,7 +107,7 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
           }}
         />
         <p><small>Le mot de passe verrouille l'accès à l'application ; il ne chiffre pas les fichiers exportés.</small></p>
-        <button onClick={onLock}>Verrouiller maintenant</button>
+        <button onClick={onLock}><LockIcon size={16} />Verrouiller maintenant</button>
       </Card>
     </Page>
   )

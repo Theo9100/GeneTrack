@@ -9,8 +9,11 @@ export function Lock({ onUnlock }: { onUnlock: () => void }) {
   }, [])
   if (has === undefined) return null
   return (
-    <div class="lock card">
+    <div class="lock">
+     <div class="card">
+      <img class="mark" src="icon-192.png" alt="" />
       <h1>GeneTrack</h1>
+      <p class="sub">{has ? 'Gestion du troupeau — Blonde d’Aquitaine' : 'Bienvenue. Choisissez un mot de passe pour protéger l’accès à l’application.'}</p>
       {has ? (
         <Form
           fields={[{ name: 'pw', label: 'Mot de passe', type: 'password' }]}
@@ -23,7 +26,6 @@ export function Lock({ onUnlock }: { onUnlock: () => void }) {
         />
       ) : (
         <>
-          <p>Première ouverture : choisissez un mot de passe. Il est stocké (haché) uniquement sur cet appareil ; il faudra en définir un sur chaque appareil.</p>
           <Form
             fields={[
               { name: 'pw', label: 'Nouveau mot de passe', type: 'password' },
@@ -37,9 +39,12 @@ export function Lock({ onUnlock }: { onUnlock: () => void }) {
               await setPassword(String(v.pw))
               onUnlock()
             }}
-          />
+          >
+            <small>Stocké uniquement sur cet appareil. Chaque appareil a son propre mot de passe.</small>
+          </Form>
         </>
       )}
+     </div>
     </div>
   )
 }

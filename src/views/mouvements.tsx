@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks'
 import { db, save } from '../db'
 import type { Animal, Data, Mouvement, Statut, TypeMouvement } from '../types'
-import { AnimalPicker, Badge, Card, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
+import { Plus } from 'lucide-preact'
+import { AnimalPicker, Badge, Card, DateChip, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
 import { formatDate, isoToday, label } from '../logic'
 
 export const MVT_LABEL: Record<TypeMouvement, string> = { entree: 'Entrée', vente: 'Vente', mort: 'Mort', reforme: 'Réforme' }
@@ -13,10 +14,13 @@ export function ListeMouvements({ data }: { data: Data }) {
   const total = data.mouvements.filter((m) => m.type === 'vente' && m.date.slice(0, 4) === isoToday().slice(0, 4))
   const ca = total.reduce((s, m) => s + (m.prix ?? 0), 0)
   return (
-    <Page title="Mouvements" actions={<a class="btn primary small" href="#/mouvements/new">+ Mouvement</a>}>
+    <Page title="Mouvements" sub="Ventes, entrées, morts et réformes" actions={<a class="btn primary small" href="#/mouvements/new"><Plus size={16} />Mouvement</a>}>
       {total.length > 0 && (
         <Card>
-          <b>{total.length}</b> vente(s) cette année{ca > 0 && <> · <b>{ca.toLocaleString('fr-FR')} €</b></>}
+          <div class="stats" style="grid-template-columns:1fr 1fr">
+            <div><b>{total.length}</b><span>Vente{total.length > 1 ? 's' : ''} cette année</span></div>
+            <div><b>{ca > 0 ? ca.toLocaleString('fr-FR') + ' €' : '—'}</b><span>Chiffre d'affaires</span></div>
+          </div>
         </Card>
       )}
       <Card>
@@ -24,8 +28,9 @@ export function ListeMouvements({ data }: { data: Data }) {
           <ul class="list">
             {rows.map((m) => (
               <li key={m.id}>
+                <DateChip iso={m.date} />
                 <a class="item" href={`#/mouvements/${m.id}`}>
-                  <b>{formatDate(m.date)}</b> · {label(byId.get(m.animalId))}
+                  <b>{label(byId.get(m.animalId))}</b>
                   <small>
                     {m.acheteur}{m.poids ? ` · ${m.poids} kg` : ''}{m.prix ? ` · ${m.prix.toLocaleString('fr-FR')} €` : ''}
                   </small>

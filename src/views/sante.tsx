@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks'
 import { db, save } from '../db'
 import type { Data, Soin, TypeSoin } from '../types'
-import { AnimalPicker, Badge, Card, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
+import { Plus } from 'lucide-preact'
+import { AnimalPicker, Badge, Card, DateChip, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
 import { addDays, formatDate, isoToday, label, withdrawalEnd } from '../logic'
 
 const TYPES: { value: TypeSoin; label: string }[] = [
@@ -21,17 +22,17 @@ export function ListeSoins({ data }: { data: Data }) {
     return n.length > 4 ? `${n.slice(0, 4).join(', ')} +${n.length - 4}` : n.join(', ')
   }
   return (
-    <Page title="Santé" actions={<a class="btn primary small" href="#/sante/new">+ Soin</a>}>
+    <Page title="Santé" sub={`${data.soins.length} soin${data.soins.length > 1 ? 's' : ''} enregistré${data.soins.length > 1 ? 's' : ''}`} actions={<a class="btn primary small" href="#/sante/new"><Plus size={16} />Soin</a>}>
       {rappels.length > 0 && (
-        <Card title={`Rappels à faire (${rappels.length})`}>
+        <Card title="Rappels à faire" count={rappels.length}>
           <ul class="list">
             {rappels.map((s) => (
               <li key={s.id}>
+                <DateChip iso={s.rappelDate} tone={s.rappelDate < today ? 'late' : ''} />
                 <a class="item" href={`#/sante/${s.id}`}>
-                  <b>{formatDate(s.rappelDate)}</b> · {s.type}{s.produit && ` · ${s.produit}`}
+                  <b style="text-transform:capitalize">{s.type}</b>{s.produit && ` · ${s.produit}`}
                   <small>{who(s)}</small>
                 </a>
-                {s.rappelDate < today && <Badge tone="bad">En retard</Badge>}
                 <button class="small" onClick={() => save<Soin>('soins', { ...s, rappelFait: true })}>Fait</button>
               </li>
             ))}
@@ -45,8 +46,9 @@ export function ListeSoins({ data }: { data: Data }) {
               const fin = withdrawalEnd(s.date, s.delaiJours)
               return (
                 <li key={s.id}>
+                  <DateChip iso={s.date} />
                   <a class="item" href={`#/sante/${s.id}`}>
-                    <b>{formatDate(s.date)}</b> · {s.type}{s.produit && ` · ${s.produit}`}
+                    <b style="text-transform:capitalize">{s.type}</b>{s.produit && ` · ${s.produit}`}
                     <small>{who(s)}{fin && ` · attente jusqu'au ${formatDate(fin)}`}</small>
                   </a>
                   {fin >= today && <Badge tone="warn">Délai</Badge>}

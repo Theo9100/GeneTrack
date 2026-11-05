@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'preact/hooks'
+import { CalendarHeart, ChevronRight, Pencil, Plus, Syringe, Truck, Baby } from 'lucide-preact'
 import { blankAnimal, db, save } from '../db'
 import type { Animal, Data, Statut } from '../types'
-import { Badge, Card, Empty, Form, Page, animalOptions, go, type FieldDef } from '../ui'
+import { Badge, Card, DateChip, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, go, nameOf, type FieldDef } from '../ui'
+import { FamilyTree } from '../tree'
 import {
   CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, shortId, withdrawalEnd,
 } from '../logic'
@@ -25,12 +27,16 @@ export function ListeAnimaux({ data }: { data: Data }) {
       .sort((x, y) => shortId(x.a).localeCompare(shortId(y.a), 'fr', { numeric: true }))
   }, [data, q, statut, cat, sexe])
   return (
-    <Page title={`Animaux (${rows.length})`} actions={<a class="btn primary small" href="#/animaux/new">+ Animal</a>}>
-      <input class="search" type="search" placeholder="N° de boucle (4 derniers chiffres), travail ou nom" value={q} onInput={(e) => setQ(e.currentTarget.value)} />
+    <Page
+      title="Animaux"
+      sub={`${rows.length} ${rows.length > 1 ? 'animaux' : 'animal'}${statut === 'present' ? (rows.length > 1 ? ' présents' : ' présent') : ''}`}
+      actions={<a class="btn primary small" href="#/animaux/new"><Plus size={16} />Animal</a>}
+    >
+      <SearchInput value={q} onInput={setQ} placeholder="Boucle, n° de travail ou nom" />
       <div class="filters">
         <select value={statut} onChange={(e) => setStatut(e.currentTarget.value)}>
           <option value="present">Présents</option>
-          <option value="">Tous statuts</option>
+          <option value="">Tous</option>
           <option value="vendu">Vendus</option>
           <option value="mort">Morts</option>
           <option value="reforme">Réformés</option>
@@ -52,19 +58,23 @@ export function ListeAnimaux({ data }: { data: Data }) {
           <ul class="list">
             {rows.map(({ a, c }) => (
               <li key={a.id}>
+                <Tag a={a} />
                 <a class="item" href={`#/animaux/${a.id}`}>
-                  <span class="big4">{shortId(a)}</span> {a.nom && <b>{a.nom}</b>}
+                  <b>{nameOf(a) || <span style="color:var(--ink-3)">Sans nom</span>}</b>
                   <small>
+                    <Sex s={a.sexe} />
                     {CATEGORIE_LABEL[c]} · {formatAge(a.naissance, today) || 'âge inconnu'}
-                    {a.travail && a.numero ? ` · …${a.numero.slice(-4)}` : ''}
                   </small>
                 </a>
-                {a.statut !== 'present' && <Badge tone={statutTone(a.statut)}>{STATUT_LABEL[a.statut]}</Badge>}
+                <span class="trail">
+                  {a.statut !== 'present' && <Badge tone={statutTone(a.statut)}>{STATUT_LABEL[a.statut]}</Badge>}
+                  <ChevronRight size={18} class="chev" />
+                </span>
               </li>
             ))}
           </ul>
         ) : (
-          <Empty>{data.animals.length ? 'Aucun animal ne correspond.' : 'Aucun animal pour le moment. Ajoutez le premier avec « + Animal ».'}</Empty>
+          <Empty>{data.animals.length ? 'Aucun animal ne correspond.' : 'Aucun animal pour le moment. Ajoutez le premier avec « Animal ».'}</Empty>
         )}
       </Card>
     </Page>
@@ -117,38 +127,20 @@ export function FormAnimal({ data, id, mere }: { data: Data; id?: string; mere?:
   )
 }
 
-function Arbre({ animals, id, depth }: { animals: Map<string, Animal>; id: string; depth: number }) {
-  const a = animals.get(id)
-  if (!a || depth === 0) return null
-  const parents: [string, string, string][] = [['Mère', a.mereId, ''], ['Père', a.pereId, a.pereTexte]]
-  return (
-    <ul class="tree">
-      {parents.map(([role, pid, texte]) => {
-        const p = pid ? animals.get(pid) : undefined
-        return (
-          <li key={role}>
-            {role} : {p ? <a href={`#/animaux/${p.id}`}>{label(p)}</a> : texte || <small>inconnu</small>}
-            {p && <Arbre animals={animals} id={p.id} depth={depth - 1} />}
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
 export function FicheAnimal({ data, id }: { data: Data; id: string }) {
   const a = data.animals.find((x) => x.id === id)
   const today = isoToday()
   const calved = useMemo(() => calvedSet(data.animals, data.velages), [data])
   if (!a) return <Page title="Animal introuvable" back="/animaux"><Empty>Cet animal n'existe pas.</Empty></Page>
   const map = new Map(data.animals.map((x) => [x.id, x]))
-  const enfants = data.animals.filter((x) => x.mereId === id || x.pereId === id).sort((x, y) => y.naissance.localeCompare(x.naissance))
+  const enfants = data.animals.filter((x) => x.mereId === id || x.pereId === id)
   const repros = data.repros.filter((r) => r.vacheId === id || r.taureauId === id).sort((x, y) => y.date.localeCompare(x.date))
   const velages = data.velages.filter((v) => v.mereId === id || v.veauId === id).sort((x, y) => y.date.localeCompare(x.date))
   const soins = data.soins.filter((s) => s.animalIds.includes(id)).sort((x, y) => y.date.localeCompare(x.date))
   const mvts = data.mouvements.filter((m) => m.animalId === id).sort((x, y) => y.date.localeCompare(x.date))
   const refs = enfants.length + repros.length + velages.length + soins.length + mvts.length
   const c = categorie(a, today, calved)
+  const enAttente = soins.some((s) => withdrawalEnd(s.date, s.delaiJours) >= today)
 
   async function supprimer() {
     if (refs) return alert("Cet animal est lié à d'autres enregistrements (descendants, reproduction, soins, mouvements). Changez plutôt son statut.")
@@ -158,58 +150,60 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
   }
 
   return (
-    <Page title={label(a)} back="/animaux" actions={<a class="btn small" href={`#/animaux/${id}/edit`}>Modifier</a>}>
-      <Card>
-        <div class="row" style="margin-bottom:8px">
-          <Badge>{CATEGORIE_LABEL[c]}</Badge>
-          <Badge tone={statutTone(a.statut)}>{STATUT_LABEL[a.statut]}</Badge>
+    <Page
+      title={label(a)}
+      back="/animaux"
+      head={
+        <div class="hero">
+          <Tag a={a} size="lg" />
+          <h1>{a.nom || CATEGORIE_LABEL[c]}</h1>
         </div>
-        <dl>
-          <dt>N° national</dt><dd>{a.numero || '—'}</dd>
-          <dt>N° de travail</dt><dd>{a.travail || '—'}</dd>
-          <dt>Sexe</dt><dd>{a.sexe === 'F' ? 'Femelle' : 'Mâle'}</dd>
-          <dt>Naissance</dt><dd>{a.naissance ? `${formatDate(a.naissance)} (${formatAge(a.naissance, today)})` : '—'}</dd>
-          {a.dateSortie && (<><dt>Sortie</dt><dd>{formatDate(a.dateSortie)}</dd></>)}
-        </dl>
-        {a.notes && <p>{a.notes}</p>}
+      }
+      sub={
+        <span class="row" style="gap:6px;margin-top:6px">
+          <Badge tone="accent">{CATEGORIE_LABEL[c]}</Badge>
+          {a.statut !== 'present' && <Badge tone={statutTone(a.statut)}>{STATUT_LABEL[a.statut]}</Badge>}
+          {enAttente && <Badge tone="warn">Délai d'attente</Badge>}
+        </span>
+      }
+      actions={<a class="btn icon-btn" href={`#/animaux/${id}/edit`} aria-label="Modifier" title="Modifier"><Pencil size={17} /></a>}
+    >
+      <Card title="Généalogie">
+        <FamilyTree animals={data.animals} id={id} selfRole={CATEGORIE_LABEL[c]} />
       </Card>
 
       {a.statut === 'present' && (
-        <div class="row" style="margin-bottom:12px">
-          {a.sexe === 'F' && <a class="btn small" href={`#/repro/new?vache=${id}`}>+ Saillie / IA</a>}
-          {a.sexe === 'F' && <a class="btn small" href={`#/velages/new?mere=${id}`}>+ Vêlage</a>}
-          <a class="btn small" href={`#/sante/new?animal=${id}`}>+ Soin</a>
-          <a class="btn small" href={`#/mouvements/new?animal=${id}`}>Vente / sortie</a>
+        <div class="chips">
+          {a.sexe === 'F' && <a class="btn small" href={`#/repro/new?vache=${id}`}><CalendarHeart size={16} />Saillie / IA</a>}
+          {a.sexe === 'F' && <a class="btn small" href={`#/velages/new?mere=${id}`}><Baby size={16} />Vêlage</a>}
+          <a class="btn small" href={`#/sante/new?animal=${id}`}><Syringe size={16} />Soin</a>
+          <a class="btn small" href={`#/mouvements/new?animal=${id}`}><Truck size={16} />Vente / sortie</a>
         </div>
       )}
 
-      <Card title="Généalogie">
-        {a.mereId || a.pereId || a.pereTexte ? <Arbre animals={map} id={id} depth={3} /> : <Empty>Parents inconnus.</Empty>}
+      <Card title="Informations">
+        <dl class="facts">
+          <div><dt>N° national</dt><dd>{a.numero || '—'}</dd></div>
+          <div><dt>N° de travail</dt><dd>{a.travail || '—'}</dd></div>
+          <div><dt>Sexe</dt><dd><Sex s={a.sexe} />{a.sexe === 'F' ? 'Femelle' : 'Mâle'}</dd></div>
+          <div><dt>Naissance</dt><dd>{a.naissance ? formatDate(a.naissance) : '—'}</dd></div>
+          <div><dt>Âge</dt><dd>{formatAge(a.naissance, today) || '—'}</dd></div>
+          {a.dateSortie && <div><dt>Sortie</dt><dd>{formatDate(a.dateSortie)}</dd></div>}
+        </dl>
+        {a.notes && <p style="margin:14px 0 0;color:var(--ink-2)">{a.notes}</p>}
       </Card>
 
-      {enfants.length > 0 && (
-        <Card title={`Descendants (${enfants.length})`}>
-          <ul class="list">
-            {enfants.map((e) => (
-              <li key={e.id}>
-                <a class="item" href={`#/animaux/${e.id}`}>
-                  <b>{label(e)}</b> <small>{e.mereId === id ? 'Mère' : 'Père'} · né(e) {formatDate(e.naissance) || '?'}</small>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
       {repros.length > 0 && (
-        <Card title="Reproduction">
+        <Card title="Reproduction" count={repros.length}>
           <ul class="list">
             {repros.map((r) => (
               <li key={r.id}>
+                <DateChip iso={r.date} />
                 <a class="item" href={`#/repro/${r.id}`}>
-                  {r.type === 'IA' ? 'IA' : 'Saillie'} {formatDate(r.date)} · {label(map.get(r.vacheId))}
-                  <small>Vêlage prévu {formatDate(dueDate(r, data.gest))}{r.diagResultat && ` · ${r.diagResultat}`}</small>
+                  <b>{r.type === 'IA' ? 'Insémination' : 'Saillie'}</b>{r.vacheId !== id && <> · {label(map.get(r.vacheId))}</>}
+                  <small>Vêlage prévu le {formatDate(dueDate(r, data.gest))}</small>
                 </a>
+                {r.velageId ? <Badge>Vêlé</Badge> : r.diagResultat === 'pleine' ? <Badge>Pleine</Badge> : r.diagResultat === 'vide' ? <Badge tone="warn">Vide</Badge> : null}
               </li>
             ))}
           </ul>
@@ -217,14 +211,16 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
       )}
 
       {velages.length > 0 && (
-        <Card title="Vêlages">
+        <Card title="Vêlages" count={velages.length}>
           <ul class="list">
             {velages.map((v) => (
               <li key={v.id}>
+                <DateChip iso={v.date} />
                 <a class="item" href={`#/velages/${v.id}`}>
-                  {formatDate(v.date)} · {v.morNe ? 'veau mort-né' : label(map.get(v.veauId))}
-                  <small>Mère {label(map.get(v.mereId))} · facilité {v.facilite}/4</small>
+                  <b>{v.morNe ? 'Veau mort-né' : v.veauId === id ? 'Naissance' : label(map.get(v.veauId))}</b>
+                  <small>Facilité {v.facilite}/4 · vigueur {v.vigueur}/4{v.poids ? ` · ${v.poids} kg` : ''}</small>
                 </a>
+                {v.facilite >= 3 && <Badge tone="warn">Difficile</Badge>}
               </li>
             ))}
           </ul>
@@ -232,14 +228,15 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
       )}
 
       {soins.length > 0 && (
-        <Card title="Santé">
+        <Card title="Santé" count={soins.length}>
           <ul class="list">
             {soins.map((s) => {
               const fin = withdrawalEnd(s.date, s.delaiJours)
               return (
                 <li key={s.id}>
+                  <DateChip iso={s.date} />
                   <a class="item" href={`#/sante/${s.id}`}>
-                    {formatDate(s.date)} · {s.type}{s.produit && ` · ${s.produit}`}
+                    <b style="text-transform:capitalize">{s.type}</b>{s.produit && ` · ${s.produit}`}
                     {fin && <small>Délai d'attente jusqu'au {formatDate(fin)}</small>}
                   </a>
                   {fin >= today && <Badge tone="warn">Délai</Badge>}
@@ -251,12 +248,14 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
       )}
 
       {mvts.length > 0 && (
-        <Card title="Mouvements">
+        <Card title="Mouvements" count={mvts.length}>
           <ul class="list">
             {mvts.map((m) => (
               <li key={m.id}>
+                <DateChip iso={m.date} />
                 <a class="item" href={`#/mouvements/${m.id}`}>
-                  {formatDate(m.date)} · {m.type}{m.acheteur && ` · ${m.acheteur}`}
+                  <b style="text-transform:capitalize">{m.type === 'entree' ? 'Entrée' : m.type}</b>{m.acheteur && ` · ${m.acheteur}`}
+                  {(m.poids || m.prix) && <small>{[m.poids && `${m.poids} kg`, m.prix && `${m.prix.toLocaleString('fr-FR')} €`].filter(Boolean).join(' · ')}</small>}
                 </a>
               </li>
             ))}

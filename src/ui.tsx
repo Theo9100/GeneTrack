@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import type { ComponentChildren } from 'preact'
 import { liveQuery } from 'dexie'
 import { loadAll } from './db'
+import { ChevronLeft, Search } from 'lucide-preact'
 import type { Animal, Data } from './types'
-import { label } from './logic'
+import { label, shortId } from './logic'
 
 // ---------- Routage par hash ----------
 export const go = (path: string) => {
@@ -32,30 +33,66 @@ export function useData(): Data | undefined {
 }
 
 // ---------- Mise en page ----------
-export function Page({ title, back, actions, children }: { title: string; back?: string; actions?: ComponentChildren; children: ComponentChildren }) {
+export function Page({ title, sub, back, actions, head, children }: {
+  title: string
+  sub?: ComponentChildren
+  back?: string
+  actions?: ComponentChildren
+  head?: ComponentChildren
+  children: ComponentChildren
+}) {
   return (
     <main>
       <header class="top">
         {back && (
-          <a class="back" href={'#' + back} aria-label="Retour">
-            ‹
+          <a class="btn icon-btn back" href={'#' + back} aria-label="Retour">
+            <ChevronLeft size={20} />
           </a>
         )}
-        <h1>{title}</h1>
+        <div class="titles">
+          {head ?? <h1>{title}</h1>}
+          {sub && <div class="sub">{sub}</div>}
+        </div>
         <div class="actions">{actions}</div>
       </header>
       {children}
     </main>
   )
 }
-export const Card = ({ title, children }: { title?: string; children: ComponentChildren }) => (
+export const Card = ({ title, count, children }: { title?: string; count?: number; children: ComponentChildren }) => (
   <section class="card">
-    {title && <h2>{title}</h2>}
+    {title && (
+      <h2>
+        {title}
+        {count !== undefined && count > 0 && <span class="count">{count}</span>}
+      </h2>
+    )}
     {children}
   </section>
 )
 export const Empty = ({ children }: { children: ComponentChildren }) => <p class="empty">{children}</p>
 export const Badge = ({ children, tone = '' }: { children: ComponentChildren; tone?: string }) => <span class={'badge ' + tone}>{children}</span>
+
+/** N° de travail affiché comme une boucle d'oreille. */
+export const Tag = ({ a, size = '' }: { a: Animal | undefined; size?: '' | 'sm' | 'lg' }) => (
+  <span class={'tag ' + size}>{a ? shortId(a) : '?'}</span>
+)
+export const Sex = ({ s }: { s: 'F' | 'M' }) => <span class={'sex ' + s} title={s === 'F' ? 'Femelle' : 'Mâle'} />
+
+const MOIS = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc']
+export function DateChip({ iso, tone = '' }: { iso: string; tone?: '' | 'late' | 'soon' }) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const thisYear = new Date().getFullYear()
+  return (
+    <span class={'date ' + tone} title={iso}>
+      <b>{d}</b>
+      <span>{MOIS[m - 1]}{y !== thisYear ? ` ${String(y).slice(2)}` : ''}</span>
+    </span>
+  )
+}
+
+/** Nom à afficher à côté de la boucle. */
+export const nameOf = (a: Animal | undefined) => (a ? a.nom || (a.travail && a.numero ? '…' + a.numero.slice(-4) : a.numero) || '' : 'Inconnu')
 
 export function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }))
@@ -66,6 +103,15 @@ export function download(name: string, content: string, type: string) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export function SearchInput({ value, onInput, placeholder }: { value: string; onInput: (v: string) => void; placeholder: string }) {
+  return (
+    <div class="search">
+      <Search size={17} />
+      <input type="search" placeholder={placeholder} value={value} onInput={(e) => onInput(e.currentTarget.value)} />
+    </div>
+  )
 }
 
 // ---------- Formulaires ----------
@@ -185,7 +231,8 @@ export function AnimalPicker({ animals, selected, onChange }: { animals: Animal[
         {list.map((a) => (
           <label key={a.id} class="check">
             <input type="checkbox" checked={selected.includes(a.id)} onChange={() => toggle(a.id)} />
-            <span>{label(a)}</span>
+            <Tag a={a} size="sm" />
+            <span>{a.nom}</span>
           </label>
         ))}
         {!list.length && <Empty>Aucun animal.</Empty>}
