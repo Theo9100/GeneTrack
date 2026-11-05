@@ -31,5 +31,7 @@ const PROJET = `
   appId: "1:556491928919:web:ee2e2cc2edcf93390cfa12",
 `
 
-export const firebaseConfig = parseFirebaseConfig(import.meta.env.VITE_FIREBASE_CONFIG) ?? parseFirebaseConfig(PROJET)
+const ENV = import.meta.env.VITE_FIREBASE_CONFIG as string | undefined
+/** VITE_FIREBASE_CONFIG=off : version 100 % locale (tests, ou si vous ne voulez pas de synchronisation). */
+export const firebaseConfig = ENV?.trim() === 'off' ? null : (parseFirebaseConfig(ENV) ?? parseFirebaseConfig(PROJET))
 export const cloudEnabled = !!firebaseConfig

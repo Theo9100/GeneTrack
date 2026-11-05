@@ -461,3 +461,36 @@ nav.tabs .brand, nav.tabs .spacer, nav.tabs .side-only { display: none; }
 .btn.sync.pending svg, .btn.sync.connecting svg { animation: spin 1.6s linear infinite; }
 .btn.sync.error { color: var(--bad); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Suppression ---------- */
+button.del { width: 36px; min-height: 36px; border-color: transparent; background: transparent; color: var(--ink-3); flex-shrink: 0; }
+button.del:hover { color: var(--bad); border-color: transparent; background: var(--bad-soft); }
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  font-size: 14.5px;
+  font-weight: 500;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  animation: toast-in 0.2s ease-out;
+}
+.toast button { min-height: 36px; background: transparent; color: var(--tag); border-color: transparent; font-weight: 700; }
+.toast button:hover { background: rgba(255, 255, 255, 0.08); border-color: transparent; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+@media (min-width: 960px) { .toast { bottom: 28px; left: calc(50% + 118px); } }
+.danger-zone { border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+.danger-zone > h2 { color: var(--bad); }
+button.danger-solid { background: var(--bad); border-color: var(--bad); color: #fff; }
+button.danger-solid:hover { opacity: 0.9; border-color: var(--bad); }
+@media (prefers-color-scheme: dark) { button.danger-solid { color: #1a0d0b; } }

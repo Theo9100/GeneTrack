@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { db, save } from '../db'
 import type { Data, Soin, TypeSoin } from '../types'
 import { Plus } from 'lucide-preact'
-import { AnimalPicker, Badge, Card, DateChip, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
+import { AnimalPicker, Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, go, remove, type FieldDef, type Values } from '../ui'
+import { planSimple } from '../remove'
 import { addDays, formatDate, isoToday, label, withdrawalEnd } from '../logic'
 
 const TYPES: { value: TypeSoin; label: string }[] = [
@@ -52,6 +53,7 @@ export function ListeSoins({ data }: { data: Data }) {
                     <small>{who(s)}{fin && ` · attente jusqu'au ${formatDate(fin)}`}</small>
                   </a>
                   {fin >= today && <Badge tone="warn">Délai</Badge>}
+                  <DeleteBtn onDelete={() => remove(planSimple('soins', s, 'Soin'))} />
                 </li>
               )
             })}
@@ -106,11 +108,7 @@ export function FormSoin({ data, id, animal }: { data: Data; id?: string; animal
           </label>
           {Number(delai) > 0 && <small>Délai d'attente calculé à partir de la date du soin ({formatDate(addDays(isoToday(), Number(delai)))} si fait aujourd'hui).</small>}
           {cur && (
-            <button type="button" class="danger" onClick={async () => {
-              if (!confirm('Supprimer ce soin ?')) return
-              await db.soins.delete(cur.id)
-              go('/sante')
-            }}>Supprimer</button>
+            <button type="button" class="danger" onClick={() => remove(planSimple('soins', cur, 'Soin'), () => go('/sante'))}>Supprimer ce soin</button>
           )}
         </Form>
       </Card>

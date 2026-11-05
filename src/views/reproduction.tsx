@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { blankAnimal, db, save } from '../db'
 import type { Animal, Chaleur, Data, Repro, Velage } from '../types'
 import { Plus } from 'lucide-preact'
-import { Badge, Card, DateChip, Empty, Form, Page, Tag, animalOptions, go, nameOf, type FieldDef, type Values } from '../ui'
+import { Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, Tag, animalOptions, go, nameOf, remove, type FieldDef, type Values } from '../ui'
+import { planRepro, planSimple, planVelage } from '../remove'
 import { agenda, commonAncestors, diffDays, dueDate, formatDate, isoToday, label, normNumero } from '../logic'
 
 export function ListeRepro({ data }: { data: Data }) {
@@ -46,6 +47,7 @@ export function ListeRepro({ data }: { data: Data }) {
                       <button class="small" onClick={() => diag(r, 'vide')}>Vide</button>
                     </span>
                   )}
+                  <DeleteBtn onDelete={() => remove(planRepro(data, r))} />
                 </li>
               )
             })}
@@ -66,6 +68,7 @@ export function ListeRepro({ data }: { data: Data }) {
                   <small>{r.type === 'IA' ? 'IA' : 'Saillie'} · {taureau(r)}</small>
                 </a>
                 {r.velageId ? <Badge>Vêlé</Badge> : r.diagResultat === 'vide' ? <Badge tone="warn">Vide</Badge> : <Badge tone="grey">Clos</Badge>}
+                <DeleteBtn onDelete={() => remove(planRepro(data, r))} />
               </li>
             ))}
           </ul>
@@ -123,11 +126,7 @@ export function FormRepro({ data, id, vache }: { data: Data; id?: string; vache?
             </p>
           )}
           {cur && (
-            <button type="button" class="danger" onClick={async () => {
-              if (!confirm('Supprimer cet enregistrement ?')) return
-              await db.repros.delete(cur.id)
-              go('/repro')
-            }}>Supprimer</button>
+            <button type="button" class="danger" onClick={() => remove(planRepro(data, cur), () => go('/repro'))}>Supprimer cette saillie / IA</button>
           )}
         </Form>
       </Card>
@@ -164,6 +163,7 @@ export function ListeVelages({ data }: { data: Data }) {
                   <small>{v.morNe ? 'Veau mort-né' : `${label(byId.get(v.veauId))} (${v.sexe === 'F' ? 'femelle' : 'mâle'})`} · facilité {v.facilite}/4 · vigueur {v.vigueur}/4{v.poids ? ` · ${v.poids} kg` : ''}</small>
                 </a>
                 {v.facilite >= 3 && <Badge tone="warn">Difficile</Badge>}
+                <DeleteBtn onDelete={() => remove(planVelage(data, v))} />
               </li>
             ))}
           </ul>
@@ -238,15 +238,7 @@ export function FormVelage({ data, id, mere }: { data: Data; id?: string; mere?:
         <Form fields={fields} initial={initial} onSubmit={onSubmit}>
           {!cur && <small>Le veau est créé automatiquement, lié à sa mère{' '}(et à son père si une saillie/IA est enregistrée).</small>}
           {cur && (
-            <button type="button" class="danger" onClick={async () => {
-              if (!confirm('Supprimer ce vêlage ? Le veau et la saillie restent enregistrés.')) return
-              if (cur.reproId) {
-                const r = await db.repros.get(cur.reproId)
-                if (r) await save<Repro>('repros', { ...r, velageId: '' })
-              }
-              await db.velages.delete(cur.id)
-              go('/velages')
-            }}>Supprimer</button>
+            <button type="button" class="danger" onClick={() => remove(planVelage(data, cur), () => go('/velages'))}>Supprimer ce vêlage (le veau est conservé)</button>
           )}
         </Form>
       </Card>
@@ -278,11 +270,7 @@ export function FormChaleur({ data, id, vache }: { data: Data; id?: string; vach
           }}
         >
           {cur && (
-            <button type="button" class="danger" onClick={async () => {
-              if (!confirm('Supprimer cette observation ?')) return
-              await db.chaleurs.delete(cur.id)
-              go('/repro')
-            }}>Supprimer</button>
+            <button type="button" class="danger" onClick={() => remove(planSimple('chaleurs', cur, 'Chaleurs'), () => go('/repro'))}>Supprimer cette observation</button>
           )}
         </Form>
       </Card>
@@ -327,6 +315,7 @@ export function CarteChaleurs({ data }: { data: Data }) {
                   <b>{label(byId.get(c.vacheId))}</b>
                   {c.notes && <small>{c.notes}</small>}
                 </a>
+                <DeleteBtn onDelete={() => remove(planSimple('chaleurs', c, 'Chaleurs'))} />
               </li>
             ))}
           </ul>

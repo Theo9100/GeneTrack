@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import type { ComponentChildren } from 'preact'
 import { liveQuery } from 'dexie'
 import { loadAll } from './db'
-import { ChevronLeft, Search } from 'lucide-preact'
+import { ChevronLeft, Search, Trash2 } from 'lucide-preact'
+import { applyPlan, type Plan } from './remove'
 import type { Animal, Data } from './types'
 import { label, shortId } from './logic'
 
@@ -111,6 +112,81 @@ export function SearchInput({ value, onInput, placeholder }: { value: string; on
       <Search size={17} />
       <input type="search" placeholder={placeholder} value={value} onInput={(e) => onInput(e.currentTarget.value)} />
     </div>
+  )
+}
+
+// ---------- Suppression avec annulation ----------
+type ToastState = { msg: string; undo?: () => Promise<void>; id: number } | null
+let toastState: ToastState = null
+const toastSubs = new Set<() => void>()
+export function toast(msg: string, undo?: () => Promise<void>) {
+  toastState = { msg, undo, id: Date.now() + Math.random() }
+  toastSubs.forEach((f) => f())
+}
+
+/** Bandeau en bas d'écran : message + bouton « Annuler » pendant 8 secondes. */
+export function Toaster() {
+  const [t, setT] = useState<ToastState>(toastState)
+  useEffect(() => {
+    const f = () => setT(toastState)
+    toastSubs.add(f)
+    return () => void toastSubs.delete(f)
+  }, [])
+  useEffect(() => {
+    if (!t) return
+    const h = setTimeout(() => {
+      if (toastState?.id === t.id) {
+        toastState = null
+        setT(null)
+      }
+    }, t.undo ? 8000 : 3000)
+    return () => clearTimeout(h)
+  }, [t?.id])
+  if (!t) return null
+  return (
+    <div class="toast" role="status" key={t.id}>
+      <span>{t.msg}</span>
+      {t.undo && (
+        <button
+          type="button"
+          onClick={async () => {
+            const undo = t.undo!
+            toastState = null
+            setT(null)
+            await undo()
+            toast('Suppression annulée')
+          }}
+        >
+          Annuler
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Applique un plan de suppression et propose l'annulation. */
+export async function remove(plan: Plan, then?: () => void) {
+  const undo = await applyPlan(plan)
+  toast(plan.label, undo)
+  then?.()
+}
+
+/** Petit bouton corbeille pour les lignes de liste. */
+export function DeleteBtn({ onDelete, title = 'Supprimer' }: { onDelete: () => void; title?: string }) {
+  return (
+    <button
+      type="button"
+      class="icon-btn del"
+      aria-label={title}
+      title={title}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onDelete()
+      }}
+    >
+      <Trash2 size={16} />
+    </button>
   )
 }
 

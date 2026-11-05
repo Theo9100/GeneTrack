@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { CalendarHeart, House, Settings, Syringe, Truck } from 'lucide-preact'
 import { Lock } from './lock'
 import { startCloud } from './cloud'
-import { useData, useRoute } from './ui'
+import { Toaster, useData, useRoute } from './ui'
 import { Accueil } from './views/accueil'
 import { FicheAnimal, FormAnimal, ListeAnimaux } from './views/animaux'
 import { FormChaleur, FormRepro, FormVelage, ListeRepro, ListeVelages } from './views/reproduction'
@@ -107,6 +107,7 @@ function Shell({ onLock }: { onLock: () => void }) {
           Réglages
         </a>
       </nav>
+      <Toaster />
     </>
   )
 }

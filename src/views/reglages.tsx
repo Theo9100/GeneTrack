@@ -4,7 +4,8 @@ import { exportData, importData, parseBackup } from '../backup'
 import { setPassword, verifyPassword } from '../auth'
 import type { Data } from '../types'
 import { CalendarDays, Download, FileSpreadsheet, Lock as LockIcon } from 'lucide-preact'
-import { Card, Form, Page, download } from '../ui'
+import { Card, Form, Page, download, remove } from '../ui'
+import { planTout } from '../remove'
 import { cloudEnabled } from '../config'
 import { cloudLogout, useSyncStatus } from '../cloud'
 import { SYNC_LABEL } from '../syncbadge'
@@ -26,6 +27,19 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
     const f = await exportData()
     download(`genetrack-${today}.json`, JSON.stringify(f, null, 1), 'application/json')
     setMsg('Sauvegarde téléchargée. Gardez-la sur une clé USB ou votre PC.')
+  }
+  async function reinitialiser() {
+    const nAnimaux = data.animals.length
+    const nSaisies = data.repros.length + data.velages.length + data.soins.length + data.mouvements.length + data.chaleurs.length
+    if (!nAnimaux && !nSaisies) return setMsg('Le troupeau est déjà vide.')
+    const rep = prompt(
+      `Cette action efface ${nAnimaux} animal(aux) et ${nSaisies} saisie(s)${cloudEnabled ? ' sur TOUS vos appareils synchronisés' : ' de cet appareil'}.\n` +
+        `Une sauvegarde sera téléchargée juste avant.\n\nPour confirmer, tapez SUPPRIMER :`,
+    )
+    if (rep?.trim().toUpperCase() !== 'SUPPRIMER') return
+    await sauvegarder()
+    await remove(planTout(data))
+    setMsg('Troupeau réinitialisé. La sauvegarde téléchargée permet de tout restaurer (Importer → Remplacer tout).')
   }
   async function restaurer(file: File | undefined) {
     if (!file) return
@@ -116,6 +130,14 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
           }}
         />
       </Card>
+      <section class="card danger-zone">
+        <h2>Réinitialiser le troupeau</h2>
+        <p>
+          Efface tous les animaux et toutes les saisies{cloudEnabled ? ', sur tous vos appareils synchronisés' : ''}. Le mot de passe, le compte et les réglages sont conservés.
+        </p>
+        <p><small>Une sauvegarde est téléchargée automatiquement juste avant, et vous pouvez annuler pendant quelques secondes.</small></p>
+        <button class="danger-solid" onClick={reinitialiser}>Réinitialiser le troupeau…</button>
+      </section>
       <Card title="Mot de passe">
         <Form
           fields={[

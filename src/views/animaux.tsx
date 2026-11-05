@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'preact/hooks'
 import { CalendarHeart, ChevronRight, Flame, Pencil, Plus, Syringe, Truck, Baby } from 'lucide-preact'
-import { blankAnimal, db, save } from '../db'
+import { blankAnimal, save } from '../db'
 import type { Animal, Data, Statut } from '../types'
-import { Badge, Card, DateChip, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, go, nameOf, type FieldDef } from '../ui'
+import { Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, go, nameOf, remove, type FieldDef } from '../ui'
+import { linkedCount, linkedSummary, planAnimal, planMouvement, planRepro, planSimple, planSoinPourAnimal, planVelage } from '../remove'
 import { FamilyTree } from '../tree'
 import {
   CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, prochaineChaleur, shortId, withdrawalEnd,
@@ -140,15 +141,17 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
   const mvts = data.mouvements.filter((m) => m.animalId === id).sort((x, y) => y.date.localeCompare(x.date))
   const chaleurs = data.chaleurs.filter((c) => c.vacheId === id).sort((x, y) => y.date.localeCompare(x.date))
   const prochaine = a && a.sexe === 'F' && a.statut === 'present' ? prochaineChaleur(id, data, today) : null
-  const refs = enfants.length + repros.length + velages.length + soins.length + mvts.length + chaleurs.length
   const c = categorie(a, today, calved)
   const enAttente = soins.some((s) => withdrawalEnd(s.date, s.delaiJours) >= today)
 
   async function supprimer() {
-    if (refs) return alert("Cet animal est lié à d'autres enregistrements (descendants, reproduction, soins, mouvements). Changez plutôt son statut.")
-    if (!confirm(`Supprimer définitivement ${label(a)} ?`)) return
-    await db.animals.delete(a!.id)
-    go('/animaux')
+    const p = planAnimal(data, a!)
+    const n = linkedCount(p)
+    const msg = n
+      ? `Supprimer ${label(a)} et ses saisies (${linkedSummary(p)}) ?` + (enfants.length ? `\n\nSes ${enfants.length} descendant(s) sont conservés.` : '')
+      : `Supprimer ${label(a)} ?`
+    if (!confirm(msg + '\n\nVous pourrez annuler juste après.')) return
+    await remove(p, () => go('/animaux'))
   }
 
   return (
@@ -212,6 +215,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
                   <b>Chaleurs observées</b>
                   {c.notes && <small>{c.notes}</small>}
                 </a>
+                <DeleteBtn onDelete={() => remove(planSimple('chaleurs', c, 'Chaleurs'))} />
               </li>
             ))}
           </ul>
@@ -229,6 +233,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
                   <small>Vêlage prévu le {formatDate(dueDate(r, data.gest))}</small>
                 </a>
                 {r.velageId ? <Badge>Vêlé</Badge> : r.diagResultat === 'pleine' ? <Badge>Pleine</Badge> : r.diagResultat === 'vide' ? <Badge tone="warn">Vide</Badge> : null}
+                <DeleteBtn onDelete={() => remove(planRepro(data, r))} />
               </li>
             ))}
           </ul>
@@ -246,6 +251,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
                   <small>Facilité {v.facilite}/4 · vigueur {v.vigueur}/4{v.poids ? ` · ${v.poids} kg` : ''}</small>
                 </a>
                 {v.facilite >= 3 && <Badge tone="warn">Difficile</Badge>}
+                <DeleteBtn onDelete={() => remove(planVelage(data, v))} />
               </li>
             ))}
           </ul>
@@ -265,6 +271,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
                     {fin && <small>Délai d'attente jusqu'au {formatDate(fin)}</small>}
                   </a>
                   {fin >= today && <Badge tone="warn">Délai</Badge>}
+                  <DeleteBtn onDelete={() => remove(planSoinPourAnimal(s, id))} title={s.animalIds.length > 1 ? 'Retirer cet animal du soin' : 'Supprimer'} />
                 </li>
               )
             })}
@@ -282,6 +289,7 @@ export function FicheAnimal({ data, id }: { data: Data; id: string }) {
                   <b style="text-transform:capitalize">{m.type === 'entree' ? 'Entrée' : m.type}</b>{m.acheteur && ` · ${m.acheteur}`}
                   {(m.poids || m.prix) && <small>{[m.poids && `${m.poids} kg`, m.prix && `${m.prix.toLocaleString('fr-FR')} €`].filter(Boolean).join(' · ')}</small>}
                 </a>
+                <DeleteBtn onDelete={() => remove(planMouvement(data, m))} />
               </li>
             ))}
           </ul>

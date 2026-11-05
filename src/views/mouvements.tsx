@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { db, save } from '../db'
 import type { Animal, Data, Mouvement, Statut, TypeMouvement } from '../types'
 import { Plus } from 'lucide-preact'
-import { AnimalPicker, Badge, Card, DateChip, Empty, Form, Page, go, type FieldDef, type Values } from '../ui'
+import { AnimalPicker, Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, go, remove, type FieldDef, type Values } from '../ui'
+import { planMouvement } from '../remove'
 import { formatDate, isoToday, label } from '../logic'
 
 export const MVT_LABEL: Record<TypeMouvement, string> = { entree: 'Entrée', vente: 'Vente', mort: 'Mort', reforme: 'Réforme' }
@@ -36,6 +37,7 @@ export function ListeMouvements({ data }: { data: Data }) {
                   </small>
                 </a>
                 <Badge tone={m.type === 'entree' ? '' : m.type === 'vente' ? 'grey' : 'bad'}>{MVT_LABEL[m.type]}</Badge>
+                <DeleteBtn onDelete={() => remove(planMouvement(data, m))} />
               </li>
             ))}
           </ul>
@@ -109,13 +111,9 @@ export function FormMouvement({ data, id, animal }: { data: Data; id?: string; a
             </label>
           )}
           {cur && (
-            <button type="button" class="danger" onClick={async () => {
-              if (!confirm('Supprimer ce mouvement ?' + (STATUT_APRES[cur.type] ? ' L’animal repassera « présent ».' : ''))) return
-              const a = data.animals.find((x) => x.id === cur.animalId)
-              if (a && STATUT_APRES[cur.type] === a.statut) await save<Animal>('animals', { ...a, statut: 'present', dateSortie: '' })
-              await db.mouvements.delete(cur.id)
-              go('/mouvements')
-            }}>Supprimer</button>
+            <button type="button" class="danger" onClick={() => remove(planMouvement(data, cur), () => go('/mouvements'))}>
+              Supprimer ce mouvement{STATUT_APRES[cur.type] ? ' (l’animal redevient présent)' : ''}
+            </button>
           )}
         </Form>
       </Card>
