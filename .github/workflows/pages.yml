@@ -1,7 +1,7 @@
 name: Publier GeneTrack (GitHub Pages)
 on:
   push:
-    branches: [main]
+    branches: [main, claude/vigilant-dirac-5aggsc]
   workflow_dispatch:
 permissions:
   contents: read
