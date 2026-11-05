@@ -21,5 +21,15 @@ export function parseFirebaseConfig(raw: string | undefined): FirebaseConfig | n
   return out.apiKey && out.projectId && out.appId ? (out as FirebaseConfig) : null
 }
 
-export const firebaseConfig = parseFirebaseConfig(import.meta.env.VITE_FIREBASE_CONFIG)
+/** Projet Firebase du troupeau (valeurs publiques). La variable VITE_FIREBASE_CONFIG, si elle est définie, a priorité. */
+const PROJET = `
+  apiKey: "AIzaSyDaUqzPdmKAkXbpB1h9nk-Yt_CQPr_MX04",
+  authDomain: "genetrack-e9c83.firebaseapp.com",
+  projectId: "genetrack-e9c83",
+  storageBucket: "genetrack-e9c83.firebasestorage.app",
+  messagingSenderId: "556491928919",
+  appId: "1:556491928919:web:ee2e2cc2edcf93390cfa12",
+`
+
+export const firebaseConfig = parseFirebaseConfig(import.meta.env.VITE_FIREBASE_CONFIG) ?? parseFirebaseConfig(PROJET)
 export const cloudEnabled = !!firebaseConfig
