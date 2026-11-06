@@ -1,63 +1,168 @@
 import { useMemo, useState } from 'preact/hooks'
-import { CalendarHeart, ChevronRight, Flame, Pencil, Plus, Syringe, Truck, Baby } from 'lucide-preact'
+import { CalendarHeart, ChevronRight, Download, Flame, Pencil, Plus, SlidersHorizontal, Syringe, Truck, Baby, X } from 'lucide-preact'
+import { ETAT_REPRO_LABEL, FILTRES_DEFAUT, TRI_LABEL, anneesNaissance, filtrer, filtresActifs, lignes, meres, peres, type Filtres, type Tri } from '../filtres'
 import { blankAnimal, save } from '../db'
 import type { Animal, Data, Statut } from '../types'
-import { Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, go, nameOf, remove, type FieldDef } from '../ui'
+import { Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, SearchInput, Sex, Tag, animalOptions, download, go, nameOf, remove, type FieldDef } from '../ui'
 import { linkedCount, linkedSummary, planAnimal, planMouvement, planRepro, planSimple, planSoinPourAnimal, planVelage } from '../remove'
 import { FamilyTree } from '../tree'
 import {
-  CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, prochaineChaleur, shortId, withdrawalEnd,
+  CATEGORIE_LABEL, calvedSet, categorie, dueDate, formatAge, formatDate, isoToday, label, normNumero, prochaineChaleur, toCSV, withdrawalEnd,
 } from '../logic'
 
 export const STATUT_LABEL: Record<Statut, string> = { present: 'Présent', vendu: 'Vendu', mort: 'Mort', reforme: 'Réformé' }
 const statutTone = (s: Statut) => (s === 'present' ? '' : s === 'vendu' ? 'grey' : 'bad')
 
+const CLE_FILTRES = 'gt-filtres'
+function lireFiltres(): Filtres {
+  try {
+    return { ...FILTRES_DEFAUT, ...JSON.parse(localStorage.getItem(CLE_FILTRES) || '{}') }
+  } catch {
+    return FILTRES_DEFAUT
+  }
+}
+
 export function ListeAnimaux({ data }: { data: Data }) {
   const [q, setQ] = useState('')
-  const [statut, setStatut] = useState('present')
-  const [cat, setCat] = useState('')
-  const [sexe, setSexe] = useState('')
+  const [f, setF] = useState<Filtres>(lireFiltres)
+  const [ouvert, setOuvert] = useState(false)
   const today = isoToday()
-  const calved = useMemo(() => calvedSet(data.animals, data.velages), [data])
-  const rows = useMemo(() => {
-    const s = q.trim().toLowerCase().replace(/\s+/g, '')
-    return data.animals
-      .map((a) => ({ a, c: categorie(a, today, calved) }))
-      .filter(({ a, c }) => (!statut || a.statut === statut) && (!cat || c === cat) && (!sexe || a.sexe === sexe))
-      .filter(({ a }) => !s || (a.numero + a.travail + a.nom).toLowerCase().replace(/\s+/g, '').includes(s))
-      .sort((x, y) => shortId(x.a).localeCompare(shortId(y.a), 'fr', { numeric: true }))
-  }, [data, q, statut, cat, sexe])
+  const set = <K extends keyof Filtres>(k: K, v: Filtres[K]) => {
+    const nf = { ...f, [k]: v }
+    setF(nf)
+    try {
+      localStorage.setItem(CLE_FILTRES, JSON.stringify(nf))
+    } catch {
+      /* stockage indisponible : filtres non mémorisés */
+    }
+  }
+  const reset = () => {
+    setF(FILTRES_DEFAUT)
+    try {
+      localStorage.removeItem(CLE_FILTRES)
+    } catch {
+      /* rien */
+    }
+  }
+  const toutes = useMemo(() => lignes(data, today), [data])
+  const rows = useMemo(() => filtrer(toutes, f, q), [toutes, f, q])
+  const actifs = filtresActifs(f, data.animals)
+  const byId = new Map(data.animals.map((a) => [a.id, a]))
+  const exporter = () =>
+    download(
+      `genetrack-animaux-filtres-${today}.csv`,
+      toCSV(
+        rows.map(({ a, c, etat, velage }) => ({
+          ...a, categorie: CATEGORIE_LABEL[c], reproduction: etat ? ETAT_REPRO_LABEL[etat] : '', velagePrevu: velage,
+          mere: a.mereId ? label(byId.get(a.mereId)) : '', pere: a.pereId ? label(byId.get(a.pereId)) : a.pereTexte,
+        })),
+        ['numero', 'travail', 'nom', 'sexe', 'naissance', 'categorie', 'mere', 'pere', 'statut', 'reproduction', 'velagePrevu', 'notes'],
+      ),
+      'text/csv;charset=utf-8',
+    )
+
   return (
     <Page
       title="Animaux"
-      sub={`${rows.length} ${rows.length > 1 ? 'animaux' : 'animal'}${statut === 'present' ? (rows.length > 1 ? ' présents' : ' présent') : ''}`}
+      sub={`${rows.length} ${rows.length > 1 ? 'animaux' : 'animal'}${f.statut === 'present' ? (rows.length > 1 ? ' présents' : ' présent') : ''}${actifs.length ? ' · filtrés' : ''}`}
       actions={<a class="btn primary small" href="#/animaux/new"><Plus size={16} />Animal</a>}
     >
       <SearchInput value={q} onInput={setQ} placeholder="Boucle, n° de travail ou nom" />
-      <div class="filters">
-        <select value={statut} onChange={(e) => setStatut(e.currentTarget.value)}>
+      <div class="filters four">
+        <select value={f.statut} onChange={(e) => set('statut', e.currentTarget.value as Filtres['statut'])} aria-label="Statut">
           <option value="present">Présents</option>
           <option value="">Tous</option>
           <option value="vendu">Vendus</option>
           <option value="mort">Morts</option>
           <option value="reforme">Réformés</option>
         </select>
-        <select value={cat} onChange={(e) => setCat(e.currentTarget.value)}>
+        <select value={f.categorie} onChange={(e) => set('categorie', e.currentTarget.value as Filtres['categorie'])} aria-label="Catégorie">
           <option value="">Catégories</option>
           {Object.entries(CATEGORIE_LABEL).map(([k, v]) => (
             <option value={k}>{v}</option>
           ))}
         </select>
-        <select value={sexe} onChange={(e) => setSexe(e.currentTarget.value)}>
+        <select value={f.sexe} onChange={(e) => set('sexe', e.currentTarget.value as Filtres['sexe'])} aria-label="Sexe">
           <option value="">Sexes</option>
           <option value="F">Femelles</option>
           <option value="M">Mâles</option>
         </select>
+        <button type="button" class={'filter-toggle' + (ouvert ? ' on' : '')} onClick={() => setOuvert(!ouvert)} aria-expanded={ouvert}>
+          <SlidersHorizontal size={16} />
+          Filtres{actifs.length > 0 && <span class="count">{actifs.length}</span>}
+        </button>
       </div>
+
+      {ouvert && (
+        <section class="card filter-panel">
+          <label>
+            <span>Année de naissance</span>
+            <select value={f.annee} onChange={(e) => set('annee', e.currentTarget.value)}>
+              <option value="">Toutes</option>
+              {anneesNaissance(data.animals).map((y) => <option value={y}>{y}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Tri</span>
+            <select value={f.tri} onChange={(e) => set('tri', e.currentTarget.value as Tri)}>
+              {Object.entries(TRI_LABEL).map(([k, v]) => <option value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Né(e) à partir du</span>
+            <input type="date" value={f.neDu} onInput={(e) => set('neDu', e.currentTarget.value)} />
+          </label>
+          <label>
+            <span>Né(e) jusqu'au</span>
+            <input type="date" value={f.neAu} onInput={(e) => set('neAu', e.currentTarget.value)} />
+          </label>
+          <label>
+            <span>Mère</span>
+            <select value={f.mereId} onChange={(e) => set('mereId', e.currentTarget.value)}>
+              <option value="">Toutes</option>
+              {meres(data.animals).map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Père</span>
+            <select value={f.pere} onChange={(e) => set('pere', e.currentTarget.value)}>
+              <option value="">Tous</option>
+              {peres(data.animals).map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Reproduction</span>
+            <select value={f.repro} onChange={(e) => set('repro', e.currentTarget.value as Filtres['repro'])}>
+              <option value="">Indifférent</option>
+              {Object.entries(ETAT_REPRO_LABEL).map(([k, v]) => <option value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" checked={f.attente} onChange={(e) => set('attente', e.currentTarget.checked)} />
+            <span>Délai d'attente en cours</span>
+          </label>
+          <div class="row full">
+            <button type="button" class="small" onClick={reset}>Réinitialiser les filtres</button>
+            <button type="button" class="small" onClick={exporter} disabled={!rows.length}><Download size={15} />Exporter la liste (CSV)</button>
+          </div>
+        </section>
+      )}
+
+      {actifs.length > 0 && (
+        <div class="chips active-filters">
+          {actifs.map((x) => (
+            <button type="button" class="btn small" key={x.key} onClick={() => set(x.key, FILTRES_DEFAUT[x.key])} title="Retirer ce filtre">
+              {x.label}
+              <X size={14} />
+            </button>
+          ))}
+        </div>
+      )}
+
       <Card>
         {rows.length ? (
           <ul class="list">
-            {rows.map(({ a, c }) => (
+            {rows.map(({ a, c, etat, velage, attente }) => (
               <li key={a.id}>
                 <Tag a={a} />
                 <a class="item" href={`#/animaux/${a.id}`}>
@@ -65,9 +170,12 @@ export function ListeAnimaux({ data }: { data: Data }) {
                   <small>
                     <Sex s={a.sexe} />
                     {CATEGORIE_LABEL[c]} · {formatAge(a.naissance, today) || 'âge inconnu'}
+                    {etat === 'pleine' && velage ? ` · vêlage le ${formatDate(velage)}` : ''}
                   </small>
                 </a>
                 <span class="trail">
+                  {attente && <Badge tone="warn">Délai</Badge>}
+                  {f.repro === '' && etat === 'pleine' && <Badge>Pleine</Badge>}
                   {a.statut !== 'present' && <Badge tone={statutTone(a.statut)}>{STATUT_LABEL[a.statut]}</Badge>}
                   <ChevronRight size={18} class="chev" />
                 </span>
@@ -75,7 +183,13 @@ export function ListeAnimaux({ data }: { data: Data }) {
             ))}
           </ul>
         ) : (
-          <Empty>{data.animals.length ? 'Aucun animal ne correspond.' : 'Aucun animal pour le moment. Ajoutez le premier avec « Animal ».'}</Empty>
+          <Empty>
+            {data.animals.length ? (
+              <>Aucun animal ne correspond. <a href="javascript:void 0" onClick={(e) => { e.preventDefault(); reset(); setQ('') }}>Effacer les filtres</a></>
+            ) : (
+              'Aucun animal pour le moment. Ajoutez le premier avec « Animal ».'
+            )}
+          </Empty>
         )}
       </Card>
     </Page>
