@@ -1,0 +1,46 @@
+name: Explorer la base des médicaments vétérinaires
+# Tâche ponctuelle de reconnaissance : affiche la structure des données publiques ANMV (data.gouv.fr).
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/vigilant-dirac-5aggsc]
+    paths: ['.github/workflows/explorer-medicaments.yml']
+permissions:
+  contents: read
+jobs:
+  explorer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ressources du jeu de données
+        run: |
+          curl -sSL "https://www.data.gouv.fr/api/1/datasets/5549ff78c751df34c0190c78/" -o ds.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('ds.json'))
+          print('TITRE', d.get('title')); print('MAJ', d.get('last_update'))
+          print('DESC', (d.get('description') or '')[:3000])
+          for r in d.get('resources', []):
+              print('RES', r.get('title'), '|', r.get('format'), '|', r.get('filesize'), '|', r.get('url'), '|', r.get('last_modified'))
+          open('urls.txt','w').write('\n'.join(r['url'] for r in d.get('resources', [])))
+          PY
+      - name: Aperçu de chaque fichier
+        run: |
+          i=0
+          while read -r u; do
+            i=$((i+1)); echo "=================== $u"
+            curl -sSL --max-filesize 300000000 "$u" -o "f$i" || { echo ECHEC; continue; }
+            file "f$i"; ls -la "f$i"
+            if file "f$i" | grep -qi zip; then unzip -l "f$i" | head -40; mkdir -p "z$i"; unzip -q -o "f$i" -d "z$i"; for g in $(find "z$i" -type f | head -8); do echo "------- $g"; file "$g"; head -c 6000 "$g" | iconv -f latin1 -t utf-8 -c; echo; done
+            else head -c 8000 "f$i"; echo; fi
+          done < urls.txt
+      - name: Recherche de rubriques posologie / temps d'attente
+        run: |
+          for f in $(find . -type f \( -name 'f*' -o -path './z*' \) ); do
+            n=$(grep -aic "posolog" "$f" || true); echo "$f posologie:$n"
+            grep -aio ".\{300\}posolog.\{900\}" "$f" | head -2 | iconv -f latin1 -t utf-8 -c
+            grep -aio ".\{200\}temps d.attente.\{500\}" "$f" | head -1 | iconv -f latin1 -t utf-8 -c
+          done
+      - name: Page iRCP (structure)
+        run: |
+          curl -sSL -A "Mozilla/5.0" "https://www.ircp.anmv.anses.fr/" -o ircp.html; ls -la ircp.html
+          grep -aio '<form[^>]*>\|<input[^>]*name="[^"]*"[^>]*>\|href="[^"]*rcp[^"]*"' ircp.html | head -40
