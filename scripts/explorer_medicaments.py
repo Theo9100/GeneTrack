@@ -1,41 +1,28 @@
-"""Reconnaissance ponctuelle de la base XML ANMV : structure, exemples, rubriques posologie / temps d'attente."""
-import sys, collections, xml.etree.ElementTree as ET
+"""Reconnaissance ponctuelle de la base ANMV : fichier de référence (codes) et exemple bovin complet."""
+import sys, collections, re, xml.etree.ElementTree as ET
 
-path = sys.argv[1]
-counts = collections.Counter()
-samples = {}
-stack = []
-hits = 0
-first_product_dumped = False
+ref, base = sys.argv[1], sys.argv[2]
+short = lambda t: t.split('}')[-1]
 
-def short(t):
-    return t.split('}')[-1]
+print('### RÉFÉRENCE : structure ###')
+root = ET.parse(ref).getroot()
+for table in root:
+    rows = list(table)
+    print(f'\n== <{short(table.tag)}> : {len(rows)} entrées ; exemple :', [(short(c.tag), (c.text or '')[:60]) for c in (rows[0] if rows else [])])
+    for r in rows:
+        txt = ' | '.join(f'{short(c.tag)}={(c.text or "").strip()}' for c in r)
+        if re.search(r'osolog|attente|Bovin|Viande|Lait|Jour|Heure|Esp[eè]ce|Contre|Indication|Mode d|voie|Intramusc|Sous-cut|Orale|Pour-on|Abats', txt, re.I) and len(txt) < 300:
+            print('   ', txt)
 
-for ev, el in ET.iterparse(path, events=('start', 'end')):
-    if ev == 'start':
-        stack.append(short(el.tag))
+print('\n### BASE : un médicament bovin complet (EPRINEX ou IVOMEC) ###')
+for ev, el in ET.iterparse(base, events=('end',)):
+    if short(el.tag) != 'medicinal-product':
         continue
-    p = '/'.join(stack[-4:])
-    counts[p] += 1
-    txt = (el.text or '').strip()
-    if txt and p not in samples:
-        samples[p] = txt[:160]
-    low = txt.lower()
-    if hits < 6 and ('posolog' in short(el.tag).lower() or ('posolog' in low and len(txt) > 40)):
-        hits += 1
-        print(f'\n### POSOLOGIE trouvée dans <{p}> :\n{txt[:1500]}\n')
-    if not first_product_dumped and len(stack) == 2 and len(list(el)) > 3:
-        first_product_dumped = True
-        print('### PREMIER ENREGISTREMENT (aperçu) ###')
+    nom = el.findtext('nom') or ''
+    if re.search(r'EPRINEX|IVOMEC', nom):
         for sub in el.iter():
             t = (sub.text or '').strip()
             if t:
-                print(f'  {short(sub.tag)} = {t[:200]}')
-        print('### FIN ###')
-    stack.pop()
-    if len(stack) <= 2:
-        el.clear()
-
-print('\n### CHEMINS (fin de chemin) — nombre — exemple ###')
-for p, n in counts.most_common(160):
-    print(f'{n:>8}  {p}  ::  {samples.get(p, "")}')
+                print(f'  {short(sub.tag)} = {t[:700]}')
+        break
+    el.clear()

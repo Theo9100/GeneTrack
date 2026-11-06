@@ -18,6 +18,5 @@ jobs:
           curl -sSL https://pro.anses.fr/RCP/amm-vet-fr-v2-v.7z -o v2.7z
           7z x -y -ov2 v2.7z >/dev/null
           find v2 -type f -exec ls -la {} \;
-          f=$(find v2 -type f -name '*.xml' | head -1)
-          head -c 3000 "$f"; echo
-          timeout 600 python3 scripts/explorer_medicaments.py "$f"
+          head -c 2500 v2/amm-vet-fr-v2-d.xml; echo
+          timeout 600 python3 scripts/explorer_medicaments.py v2/amm-vet-fr-v2-d.xml v2/amm-vet-fr-v2-v.xml
