@@ -511,3 +511,14 @@ button.danger-solid:hover { opacity: 0.9; border-color: var(--bad); }
 }
 .filter-panel > * { min-width: 0; }
 .filter-panel input[type='date'] { min-width: 0; width: 100%; }
+
+/* ---------- Médicaments ---------- */
+.rcp { white-space: pre-line; margin: 0 0 8px; font-size: 15px; line-height: 1.55; }
+.rcp mark { background: var(--accent-soft); color: inherit; border-radius: 4px; padding: 0 2px; }
+.pill-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+.autre-espece { opacity: 0.55; }
+.list .item { flex: 1; min-width: 0; }
+.list small.wrap, .list .wrap small { white-space: normal; }
+.chips .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.top h1.wrap { white-space: normal; font-size: 22px; line-height: 1.2; }
+@media (min-width: 960px) { .top h1.wrap { font-size: 28px; } }

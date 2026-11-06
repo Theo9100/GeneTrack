@@ -8,7 +8,7 @@ export default defineConfig({
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
-      workbox: { globPatterns: ['**/*.{js,css,html,woff2,png,svg,ico}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2,png,svg,ico,json}'], maximumFileSizeToCacheInBytes: 8 * 1024 * 1024 },
       includeAssets: ['icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'GeneTrack — Troupeau Blonde d’Aquitaine',

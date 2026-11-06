@@ -9,6 +9,7 @@ import { FormChaleur, FormRepro, FormVelage, ListeRepro, ListeVelages } from './
 import { FormSoin, ListeSoins } from './views/sante'
 import { FormMouvement, ListeMouvements } from './views/mouvements'
 import { Reglages } from './views/reglages'
+import { FicheMedicament, ListeMedicaments } from './views/medicaments'
 
 /** Tête de bovin, dans le style des icônes Lucide. */
 const Cow = ({ size = 22 }: { size?: number }) => (
@@ -74,7 +75,16 @@ function Shell({ onLock }: { onLock: () => void }) {
       view = !a ? <ListeVelages data={data} /> : a === 'new' ? <FormVelage data={data} mere={q.get('mere') ?? undefined} /> : <FormVelage data={data} id={a} />
       break
     case 'sante':
-      view = !a ? <ListeSoins data={data} /> : a === 'new' ? <FormSoin data={data} animal={q.get('animal') ?? undefined} /> : <FormSoin data={data} id={a} />
+      view = !a ? (
+        <ListeSoins data={data} />
+      ) : a === 'new' ? (
+        <FormSoin data={data} animal={q.get('animal') ?? undefined} produit={q.get('produit') ?? undefined} delai={q.get('delai') ?? undefined} />
+      ) : (
+        <FormSoin data={data} id={a} />
+      )
+      break
+    case 'medicaments':
+      view = a ? <FicheMedicament id={a} /> : <ListeMedicaments data={data} q0={q.get('q') ?? ''} />
       break
     case 'mouvements':
       view = !a ? <ListeMouvements data={data} /> : a === 'new' ? <FormMouvement data={data} animal={q.get('animal') ?? undefined} /> : <FormMouvement data={data} id={a} />
@@ -85,7 +95,7 @@ function Shell({ onLock }: { onLock: () => void }) {
     default:
       view = <main><p class="empty">Page introuvable. <a href="#/">Accueil</a></p></main>
   }
-  const active = section === 'velages' || section === 'chaleurs' ? 'repro' : (section ?? '')
+  const active = section === 'velages' || section === 'chaleurs' ? 'repro' : section === 'medicaments' ? 'sante' : (section ?? '')
   return (
     <>
       {/* key = route complète : réinitialise l'état des formulaires à chaque changement de page */}

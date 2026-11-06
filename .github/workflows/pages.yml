@@ -3,6 +3,8 @@ on:
   push:
     branches: [main, claude/vigilant-dirac-5aggsc]
   workflow_dispatch:
+  schedule:
+    - cron: '41 3 * * 1' # chaque lundi : mise à jour de la base des médicaments (ANMV)
 permissions:
   contents: read
   pages: write
@@ -21,6 +23,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Base des médicaments vétérinaires (ANMV, données publiques)
+        # En cas d'échec du téléchargement, l'app est publiée sans la base (l'écran l'indique).
+        continue-on-error: true
+        run: |
+          curl -sSLf --retry 3 https://pro.anses.fr/RCP/amm-vet-fr-v2-v.7z -o /tmp/anmv.7z
+          7z x -y -o/tmp/anmv /tmp/anmv.7z >/dev/null
+          python3 scripts/medicaments.py /tmp/anmv/amm-vet-fr-v2-d.xml /tmp/anmv/amm-vet-fr-v2-v.xml public/medicaments.json
       - run: npm run build
         env:
           # configuration Firebase (variable du dépôt) : active la synchronisation

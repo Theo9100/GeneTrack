@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
 import { db, save } from '../db'
 import type { Data, Soin, TypeSoin } from '../types'
-import { Plus } from 'lucide-preact'
+import { Plus, Pill } from 'lucide-preact'
 import { AnimalPicker, Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, go, remove, type FieldDef, type Values } from '../ui'
 import { planSimple } from '../remove'
 import { addDays, formatDate, isoToday, label, withdrawalEnd } from '../logic'
@@ -24,6 +24,9 @@ export function ListeSoins({ data }: { data: Data }) {
   }
   return (
     <Page title="Santé" sub={`${data.soins.length} soin${data.soins.length > 1 ? 's' : ''} enregistré${data.soins.length > 1 ? 's' : ''}`} actions={<a class="btn primary small" href="#/sante/new"><Plus size={16} />Soin</a>}>
+      <div class="chips">
+        <a class="btn small" href="#/medicaments"><Pill size={16} />Médicaments : posologies et temps d'attente</a>
+      </div>
       {rappels.length > 0 && (
         <Card title="Rappels à faire" count={rappels.length}>
           <ul class="list">
@@ -66,10 +69,11 @@ export function ListeSoins({ data }: { data: Data }) {
   )
 }
 
-export function FormSoin({ data, id, animal }: { data: Data; id?: string; animal?: string }) {
+export function FormSoin({ data, id, animal, produit, delai: delai0 }: { data: Data; id?: string; animal?: string; produit?: string; delai?: string }) {
   const cur = id ? data.soins.find((s) => s.id === id) : undefined
   const [sel, setSel] = useState<string[]>(cur ? cur.animalIds : animal ? [animal] : [])
   const [delai, setDelai] = useState('')
+  const [nomProduit, setNomProduit] = useState(cur?.produit ?? produit ?? '')
   if (id && !cur) return <Page title="Introuvable" back="/sante"><Empty>Soin introuvable.</Empty></Page>
   const pool = data.animals.filter((a) => a.statut === 'present' || cur?.animalIds.includes(a.id))
   const fields: FieldDef[] = [
@@ -84,14 +88,17 @@ export function FormSoin({ data, id, animal }: { data: Data; id?: string; animal
   ]
   const initial: Values = cur
     ? { date: cur.date, type: cur.type, produit: cur.produit, dose: cur.dose, delaiJours: String(cur.delaiJours), rappelDate: cur.rappelDate, rappelFait: cur.rappelFait, notes: cur.notes }
-    : { date: isoToday(), type: 'vaccin', produit: '', dose: '', delaiJours: '0', rappelDate: '', rappelFait: false, notes: '' }
+    : { date: isoToday(), type: 'vaccin', produit: produit ?? '', dose: '', delaiJours: delai0 ?? '0', rappelDate: '', rappelFait: false, notes: '' }
   return (
     <Page title={cur ? 'Modifier le soin' : 'Nouveau soin'} back="/sante">
       <Card>
         <Form
           fields={fields}
           initial={initial}
-          onChange={(v) => setDelai(String(v.delaiJours))}
+          onChange={(v) => {
+            setDelai(String(v.delaiJours))
+            setNomProduit(String(v.produit))
+          }}
           onSubmit={async (v) => {
             if (!sel.length) throw new Error('Sélectionnez au moins un animal.')
             const delaiJours = Math.max(0, Math.round(Number(String(v.delaiJours).replace(',', '.')) || 0))
@@ -102,6 +109,11 @@ export function FormSoin({ data, id, animal }: { data: Data; id?: string; animal
             go('/sante')
           }}
         >
+          <a class="btn small" href={`#/medicaments${nomProduit.trim() ? '?q=' + encodeURIComponent(nomProduit.trim()) : ''}`}>
+            <Pill size={16} />
+            {nomProduit.trim() ? `Posologie de « ${nomProduit.trim()} »` : 'Chercher une posologie'}
+          </a>
+          {produit && delai0 && <small>Délai d'attente viande pré-rempli d'après le RCP officiel ({delai0} j) : vérifiez-le avec l'ordonnance.</small>}
           <label>
             <span>Animaux concernés *</span>
             <AnimalPicker animals={pool} selected={sel} onChange={setSel} />
