@@ -1,10 +1,10 @@
 name: Explorer la base des médicaments vétérinaires
-# Tâche ponctuelle de reconnaissance : affiche la structure des données publiques ANMV (pro.anses.fr).
+# Tâche ponctuelle : essai de l'import sur la base réelle de l'ANMV.
 on:
   workflow_dispatch:
   push:
     branches: [claude/vigilant-dirac-5aggsc]
-    paths: ['.github/workflows/explorer-medicaments.yml', 'scripts/explorer_medicaments.py']
+    paths: ['.github/workflows/explorer-medicaments.yml', 'scripts/medicaments.py']
 permissions:
   contents: read
 jobs:
@@ -13,10 +13,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - name: Base XML V2
+      - name: Import réel
         run: |
           curl -sSL https://pro.anses.fr/RCP/amm-vet-fr-v2-v.7z -o v2.7z
           7z x -y -ov2 v2.7z >/dev/null
-          find v2 -type f -exec ls -la {} \;
-          head -c 2500 v2/amm-vet-fr-v2-d.xml; echo
-          timeout 600 python3 scripts/explorer_medicaments.py v2/amm-vet-fr-v2-d.xml v2/amm-vet-fr-v2-v.xml
+          python3 scripts/medicaments.py v2/amm-vet-fr-v2-d.xml v2/amm-vet-fr-v2-v.xml medicaments.json
+          ls -la medicaments.json; gzip -9 -c medicaments.json | wc -c
+          python3 - <<'PY'
+          import json, re
+          b = json.load(open('medicaments.json'))
+          it = b['items']
+          print('date', b['date'], 'items', len(it))
+          for k in ['posologie', 'attenteTexte', 'indications', 'contreIndications', 'especes']:
+              print(k, 'remplis', sum(1 for m in it if m[k]), 'taille', sum(len(m[k]) for m in it))
+          print('sans attente structurée', sum(1 for m in it if not m['attente']))
+          for m in it:
+              if re.search(r'EPRINEX|IVOMEC SOLUTION|BOVILIS BVD|ZACTRAN|CALCIUM', m['nom']):
+                  print('\n==', m['nom'], '|', m['forme'], '|', m['substances'], '|', m['voies'])
+                  print('ATTENTE', m['attente'])
+                  print('POSOLOGIE', m['posologie'][:700])
+          PY

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<medicinal-product-group>
+  <Informations><date-jeu-de-donnees>2026-11-05T10:22:08</date-jeu-de-donnees></Informations>
+  <medicinal-product>
+    <src-id>1175</src-id><nom>IVOMEC SOLUTION INJECTABLE POUR BOVINS</nom><num>0306260</num><term-tit>249</term-tit>
+    <term-stat-auto>4</term-stat-auto><term-fp>190</term-fp><num-amm>FR/V/4157043 2/1981</num-amm><maj-rcp>2025-09-17</maj-rcp>
+    <lien-rcp>http://www.ircp.anmv.anses.fr/rcp.aspx?NomMedicament=IVOMEC+SOLUTION+INJECTABLE+POUR+BOVINS</lien-rcp>
+    <composition><compo><sa><term-sa>1177</term-sa><quantite>10</quantite><term-unite>10</term-unite></sa></compo></composition>
+    <voie-administration>
+      <voie-admin><term-va>24</term-va><term-esp>5</term-esp><term-denr>14</term-denr><qte-ta>49</qte-ta><term-unite>22</term-unite></voie-admin>
+      <voie-admin><term-va>24</term-va><term-esp>5</term-esp><term-denr>9</term-denr><commentaire>Ne pas utiliser chez les animaux producteurs de lait destiné à la consommation humaine.</commentaire></voie-admin>
+    </voie-administration>
+    <paragraphes-rcp>
+      <para-rcp><term-titre>66</term-titre><contenu>Bovins.</contenu></para-rcp>
+      <para-rcp><term-titre>67</term-titre><contenu>Traitement des infestations par les nématodes, les larves de diptères, les poux et les acariens.</contenu></para-rcp>
+      <para-rcp><term-titre>68</term-titre><contenu>Ne pas utiliser en cas d'hypersensibilité connue à la substance active.</contenu></para-rcp>
+      <para-rcp><term-titre>78</term-titre><contenu>Voie sous-cutanée 0,2 mg d'ivermectine par kg de poids vif, soit 1 mL de solution pour 50 kg de poids vif, en une administration unique.</contenu></para-rcp>
+      <para-rcp><term-titre>81</term-titre><contenu>Viande et abats : 49 jours.\n Lait : Ne pas utiliser chez les animaux producteurs de lait destiné à la consommation humaine.</contenu></para-rcp>
+    </paragraphes-rcp>
+  </medicinal-product>
+  <medicinal-product>
+    <src-id>2</src-id><nom>PRODUIT POUR CHIENS</nom><term-stat-auto>4</term-stat-auto>
+    <voie-administration><voie-admin><term-va>24</term-va><term-esp>22</term-esp></voie-admin></voie-administration>
+  </medicinal-product>
+  <medicinal-product>
+    <src-id>3</src-id><nom>PRODUIT RUMINANTS SAUF BOVINS</nom><term-stat-auto>4</term-stat-auto>
+    <voie-administration><voie-admin><term-va>24</term-va><term-esp>106</term-esp></voie-admin></voie-administration>
+  </medicinal-product>
+  <medicinal-product>
+    <src-id>4</src-id><nom>ANCIEN PRODUIT BOVINS</nom><term-stat-auto>9</term-stat-auto>
+    <voie-administration><voie-admin><term-va>24</term-va><term-esp>5</term-esp></voie-admin></voie-administration>
+  </medicinal-product>
+  <medicinal-product>
+    <src-id>5</src-id><nom>VACCIN SANS VOIE RENSEIGNEE</nom><term-stat-auto>4</term-stat-auto>
+    <paragraphes-rcp><para-rcp><term-titre>66</term-titre><contenu>Bovins et ovins.</contenu></para-rcp>
+    <para-rcp><term-titre>16</term-titre><contenu>2 mL par animal.</contenu></para-rcp></paragraphes-rcp>
+  </medicinal-product>
+</medicinal-product-group>

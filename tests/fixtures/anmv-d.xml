@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<reference-data>
+  <term-stat-auto><entry><source-code>4</source-code><source-desc>Valide</source-desc></entry><entry><source-code>9</source-code><source-desc>Abrogée</source-desc></entry></term-stat-auto>
+  <term-tit><entry><source-code>249</source-code><source-desc>BOEHRINGER INGELHEIM ANIMAL HEALTH FRANCE</source-desc></entry></term-tit>
+  <term-fp><entry><source-code>190</source-code><source-desc>Solution injectable</source-desc></entry></term-fp>
+  <term-esp><entry><source-code>5</source-code><source-desc>Bovins</source-desc></entry><entry><source-code>22</source-code><source-desc>Chiens</source-desc></entry><entry><source-code>106</source-code><source-desc>Tous les ruminants à l'exception des bovins</source-desc></entry></term-esp>
+  <term-sa><entry><source-code>1177</source-code><source-desc>Ivermectine</source-desc></entry></term-sa>
+  <term-va><entry><source-code>24</source-code><source-desc>Sous-cutanée</source-desc></entry></term-va>
+  <term-denr><entry><source-code>9</source-code><source-desc>lait</source-desc></entry><entry><source-code>14</source-code><source-desc>viande et abats</source-desc></entry></term-denr>
+  <term-unite><entry><source-code>22</source-code><source-desc>jour</source-desc></entry><entry><source-code>10</source-code><source-desc>mg</source-desc></entry></term-unite>
+  <term-titre>
+    <entry><source-code>66</source-code><source-desc>3.1 Espèces cibles</source-desc><ordre>4</ordre></entry>
+    <entry><source-code>67</source-code><source-desc>3.2 Indications d'utilisation pour chaque espèce cible</source-desc><ordre>5</ordre></entry>
+    <entry><source-code>68</source-code><source-desc>3.3 Contre-indications</source-desc><ordre>6</ordre></entry>
+    <entry><source-code>78</source-code><source-desc>3.9 Voies d'administration et posologie</source-desc><ordre>16</ordre></entry>
+    <entry><source-code>81</source-code><source-desc>3.12 Temps d'attente</source-desc><ordre>19</ordre></entry>
+    <entry><source-code>16</source-code><source-desc>4.9. Posologie et voie d'administration</source-desc><ordre>16</ordre></entry>
+  </term-titre>
+</reference-data>
