@@ -1,5 +1,5 @@
 name: Explorer la base des médicaments vétérinaires
-# Tâche ponctuelle de reconnaissance : affiche la structure des données publiques ANMV (data.gouv.fr).
+# Tâche ponctuelle de reconnaissance : affiche la structure des données publiques ANMV (pro.anses.fr).
 on:
   workflow_dispatch:
   push:
@@ -11,36 +11,23 @@ jobs:
   explorer:
     runs-on: ubuntu-latest
     steps:
-      - name: Ressources du jeu de données
+      - name: Outils
+        run: sudo apt-get install -y -qq p7zip-full poppler-utils >/dev/null
+      - name: Base XML V2
         run: |
-          curl -sSL "https://www.data.gouv.fr/api/1/datasets/5549ff78c751df34c0190c78/" -o ds.json
-          python3 - <<'PY'
-          import json
-          d = json.load(open('ds.json'))
-          print('TITRE', d.get('title')); print('MAJ', d.get('last_update'))
-          print('DESC', (d.get('description') or '')[:3000])
-          for r in d.get('resources', []):
-              print('RES', r.get('title'), '|', r.get('format'), '|', r.get('filesize'), '|', r.get('url'), '|', r.get('last_modified'))
-          open('urls.txt','w').write('\n'.join(r['url'] for r in d.get('resources', [])))
-          PY
-      - name: Aperçu de chaque fichier
+          curl -sSL https://pro.anses.fr/RCP/amm-vet-fr-v2-v.7z -o v2.7z
+          7z l v2.7z | tail -15
+          7z x -y -ov2 v2.7z >/dev/null
+          ls -laR v2 | head -20
+          f=$(find v2 -type f -name '*.xml' | head -1); echo "FICHIER $f"; file "$f"; ls -la "$f"
+          echo "--- début"; head -c 5000 "$f"; echo
+          echo "--- balises distinctes (top 120)"
+          grep -o '<[a-zA-Z_:][a-zA-Z0-9_:.-]*' "$f" | sort | uniq -c | sort -rn | head -120
+          echo "--- posologie"; grep -aic 'posolog' "$f" || true
+          grep -aio '.\{0,400\}posolog.\{0,1200\}' "$f" | head -3
+          echo "--- temps d'attente"; grep -aio '.\{0,300\}attente.\{0,700\}' "$f" | head -2
+          echo "--- un produit bovin (Ivomec / Eprinex)"; grep -aio '.\{0,200\}EPRINEX.\{0,3000\}' "$f" | head -1
+      - name: Notice XML V2
         run: |
-          i=0
-          while read -r u; do
-            i=$((i+1)); echo "=================== $u"
-            curl -sSL --max-filesize 300000000 "$u" -o "f$i" || { echo ECHEC; continue; }
-            file "f$i"; ls -la "f$i"
-            if file "f$i" | grep -qi zip; then unzip -l "f$i" | head -40; mkdir -p "z$i"; unzip -q -o "f$i" -d "z$i"; for g in $(find "z$i" -type f | head -8); do echo "------- $g"; file "$g"; head -c 6000 "$g" | iconv -f latin1 -t utf-8 -c; echo; done
-            else head -c 8000 "f$i"; echo; fi
-          done < urls.txt
-      - name: Recherche de rubriques posologie / temps d'attente
-        run: |
-          for f in $(find . -type f \( -name 'f*' -o -path './z*' \) ); do
-            n=$(grep -aic "posolog" "$f" || true); echo "$f posologie:$n"
-            grep -aio ".\{300\}posolog.\{900\}" "$f" | head -2 | iconv -f latin1 -t utf-8 -c
-            grep -aio ".\{200\}temps d.attente.\{500\}" "$f" | head -1 | iconv -f latin1 -t utf-8 -c
-          done
-      - name: Page iRCP (structure)
-        run: |
-          curl -sSL -A "Mozilla/5.0" "https://www.ircp.anmv.anses.fr/" -o ircp.html; ls -la ircp.html
-          grep -aio '<form[^>]*>\|<input[^>]*name="[^"]*"[^>]*>\|href="[^"]*rcp[^"]*"' ircp.html | head -40
+          curl -sSL "https://static.data.gouv.fr/resources/base-de-donnees-publique-des-medicaments-veterinaires-autorises-en-france-1/20230824-080640/note-utilisation-jeu-de-donnees-xml-v2-aout-2023-.pdf" -o notice.pdf
+          pdftotext -layout notice.pdf - | head -400
