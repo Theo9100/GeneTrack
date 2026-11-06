@@ -4,30 +4,20 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/vigilant-dirac-5aggsc]
-    paths: ['.github/workflows/explorer-medicaments.yml']
+    paths: ['.github/workflows/explorer-medicaments.yml', 'scripts/explorer_medicaments.py']
 permissions:
   contents: read
 jobs:
   explorer:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Outils
-        run: sudo apt-get install -y -qq p7zip-full poppler-utils >/dev/null
+      - uses: actions/checkout@v5
       - name: Base XML V2
         run: |
           curl -sSL https://pro.anses.fr/RCP/amm-vet-fr-v2-v.7z -o v2.7z
-          7z l v2.7z | tail -15
           7z x -y -ov2 v2.7z >/dev/null
-          ls -laR v2 | head -20
-          f=$(find v2 -type f -name '*.xml' | head -1); echo "FICHIER $f"; file "$f"; ls -la "$f"
-          echo "--- début"; head -c 5000 "$f"; echo
-          echo "--- balises distinctes (top 120)"
-          grep -o '<[a-zA-Z_:][a-zA-Z0-9_:.-]*' "$f" | sort | uniq -c | sort -rn | head -120
-          echo "--- posologie"; grep -aic 'posolog' "$f" || true
-          grep -aio '.\{0,400\}posolog.\{0,1200\}' "$f" | head -3
-          echo "--- temps d'attente"; grep -aio '.\{0,300\}attente.\{0,700\}' "$f" | head -2
-          echo "--- un produit bovin (Ivomec / Eprinex)"; grep -aio '.\{0,200\}EPRINEX.\{0,3000\}' "$f" | head -1
-      - name: Notice XML V2
-        run: |
-          curl -sSL "https://static.data.gouv.fr/resources/base-de-donnees-publique-des-medicaments-veterinaires-autorises-en-france-1/20230824-080640/note-utilisation-jeu-de-donnees-xml-v2-aout-2023-.pdf" -o notice.pdf
-          pdftotext -layout notice.pdf - | head -400
+          find v2 -type f -exec ls -la {} \;
+          f=$(find v2 -type f -name '*.xml' | head -1)
+          head -c 3000 "$f"; echo
+          timeout 600 python3 scripts/explorer_medicaments.py "$f"
