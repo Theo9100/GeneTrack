@@ -10,6 +10,10 @@ import { FormSoin, ListeSoins } from './views/sante'
 import { FormMouvement, ListeMouvements } from './views/mouvements'
 import { Reglages } from './views/reglages'
 import { FicheMedicament, ListeMedicaments } from './views/medicaments'
+import { BilanRepro } from './views/bilan'
+import { Registre } from './views/registre'
+import { periodes } from './registre'
+import { isoToday } from './logic'
 
 /** Tête de bovin, dans le style des icônes Lucide. */
 const Cow = ({ size = 22 }: { size?: number }) => (
@@ -66,7 +70,7 @@ function Shell({ onLock }: { onLock: () => void }) {
       view = !a ? <ListeAnimaux data={data} /> : a === 'new' ? <FormAnimal data={data} mere={q.get('mere') ?? undefined} /> : b === 'edit' ? <FormAnimal data={data} id={a} /> : <FicheAnimal data={data} id={a} />
       break
     case 'repro':
-      view = !a ? <ListeRepro data={data} /> : a === 'new' ? <FormRepro data={data} vache={q.get('vache') ?? undefined} /> : <FormRepro data={data} id={a} />
+      view = !a ? <ListeRepro data={data} /> : a === 'bilan' ? <BilanRepro data={data} annee={q.get('annee') ?? undefined} /> : a === 'new' ? <FormRepro data={data} vache={q.get('vache') ?? undefined} /> : <FormRepro data={data} id={a} />
       break
     case 'chaleurs':
       view = a === 'new' || !a ? <FormChaleur data={data} vache={q.get('vache') ?? undefined} /> : <FormChaleur data={data} id={a} />
@@ -89,6 +93,11 @@ function Shell({ onLock }: { onLock: () => void }) {
     case 'mouvements':
       view = !a ? <ListeMouvements data={data} /> : a === 'new' ? <FormMouvement data={data} animal={q.get('animal') ?? undefined} /> : <FormMouvement data={data} id={a} />
       break
+    case 'registre': {
+      const p = periodes(isoToday())[0]
+      view = <Registre data={data} du={q.get('du') || p.du} au={q.get('au') || p.au} />
+      break
+    }
     case 'reglages':
       view = <Reglages data={data} onLock={onLock} />
       break

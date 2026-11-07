@@ -58,6 +58,9 @@ export interface Soin extends Base {
   rappelDate: string
   rappelFait: boolean
   notes: string
+  // Facultatifs (registre des traitements) : absents des soins saisis avant leur ajout.
+  veterinaire?: string
+  ordonnance?: string
 }
 
 export type TypeMouvement = 'entree' | 'vente' | 'mort' | 'reforme'

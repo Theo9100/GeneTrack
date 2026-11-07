@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
 import { blankAnimal, db, save } from '../db'
 import type { Animal, Chaleur, Data, Repro, Velage } from '../types'
-import { Plus } from 'lucide-preact'
+import { ChartColumn, Plus } from 'lucide-preact'
 import { Badge, Card, DateChip, DeleteBtn, Empty, Form, Page, Tag, animalOptions, go, nameOf, remove, type FieldDef, type Values } from '../ui'
 import { planRepro, planSimple, planVelage } from '../remove'
 import { agenda, commonAncestors, diffDays, dueDate, formatDate, isoToday, label, normNumero } from '../logic'
@@ -20,6 +20,7 @@ export function ListeRepro({ data }: { data: Data }) {
   return (
     <Page title="Reproduction" sub={`${enCours.length} gestation${enCours.length > 1 ? 's' : ''} en cours · ${data.gest} jours de gestation`} actions={<a class="btn primary small" href="#/repro/new"><Plus size={16} />Saillie</a>}>
       <div class="chips">
+        <a class="btn small" href="#/repro/bilan"><ChartColumn size={16} />Bilan</a>
         <a class="btn small" href="#/chaleurs/new"><Plus size={16} />Chaleurs observées</a>
         <a class="btn small" href="#/velages/new"><Plus size={16} />Vêlage</a>
         <a class="btn small" href="#/velages">Tous les vêlages</a>

@@ -5,6 +5,8 @@ Application web (PWA) de gestion d'un troupeau de Blonde d'Aquitaine. Gratuite, 
 ## Fonctions de la V1
 Animaux (fiche, recherche, arbre généalogique cliquable : grands-parents, parents, produits), saillies/IA avec alerte de consanguinité, diagnostics, vêlages (création automatique du veau lié à ses parents), chaleurs observées et prévues (cycle de 21 jours), soins avec délais d'attente et rappels, ventes/sorties (une ou plusieurs bêtes à la fois), tableau de bord et alertes, export/import JSON, export CSV, export calendrier `.ics`, mot de passe unique.
 
+Ajouts : filtres avancés des animaux ; base officielle des médicaments bovins (posologies, temps d'attente, calcul de dose indicatif) ; **registre des traitements** imprimable / PDF (Réglages) ; **bilan de reproduction** par campagne avec vaches à surveiller (Reproduction → Bilan).
+
 ## Lancer en local (PC)
 ```bash
 npm install

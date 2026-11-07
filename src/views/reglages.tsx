@@ -3,7 +3,9 @@ import { GESTATION_DEFAUT, getSetting, setSetting } from '../db'
 import { exportData, importData, parseBackup } from '../backup'
 import { setPassword, verifyPassword } from '../auth'
 import type { Data } from '../types'
-import { CalendarDays, Download, FileSpreadsheet, Lock as LockIcon } from 'lucide-preact'
+import { CalendarDays, ClipboardList, Download, FileSpreadsheet, Lock as LockIcon } from 'lucide-preact'
+import { EXPLOITATION_VIDE, periodes, type Exploitation } from '../registre'
+import { go } from '../ui'
 import { Card, Form, Page, download, remove } from '../ui'
 import { planTout } from '../remove'
 import { cloudEnabled } from '../config'
@@ -102,6 +104,7 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
         </label>
         <small>Pour passer du téléphone au PC : exportez sur l'un, importez sur l'autre. La fusion n'efface rien.</small>
       </Card>
+      <CarteRegistre data={data} />
       <Card title="Calendrier et tableurs">
         <div class="row">
           <button onClick={ics}><CalendarDays size={17} />Exporter le calendrier (.ics)</button>
@@ -157,5 +160,62 @@ export function Reglages({ data, onLock }: { data: Data; onLock: () => void }) {
         <button onClick={onLock}><LockIcon size={16} />Verrouiller maintenant</button>
       </Card>
     </Page>
+  )
+}
+
+function CarteRegistre({ data }: { data: Data }) {
+  const today = isoToday()
+  const ps = periodes(today)
+  const [ex, setEx] = useState<Exploitation | null>(null)
+  const [du, setDu] = useState(ps[0].du)
+  const [au, setAu] = useState(ps[0].au)
+  const [ok, setOk] = useState(false)
+  useEffect(() => {
+    getSetting<Exploitation>('exploitation', EXPLOITATION_VIDE).then((e) => setEx({ ...EXPLOITATION_VIDE, ...e }))
+  }, [])
+  const n = data.soins.filter((s) => s.date >= du && s.date <= au).length
+  return (
+    <Card title="Registre des traitements">
+      <p style="margin-top:0">
+        Document réglementaire listant tous les traitements de la période (animaux, médicament, dose, temps d'attente, prescripteur), prêt à imprimer ou à
+        enregistrer en PDF.
+      </p>
+      {ex && (
+        <Form
+          fields={[
+            { name: 'nom', label: "Nom de l'exploitation" },
+            { name: 'cheptel', label: 'N° de cheptel (EDE)', placeholder: 'ex. FR 40 123 456' },
+            { name: 'detenteur', label: 'Détenteur' },
+            { name: 'adresse', label: 'Adresse' },
+          ]}
+          initial={{ ...ex }}
+          submitLabel="Enregistrer ces informations"
+          onSubmit={async (v) => {
+            const e = { nom: String(v.nom).trim(), cheptel: String(v.cheptel).trim(), detenteur: String(v.detenteur).trim(), adresse: String(v.adresse).trim() }
+            await setSetting('exploitation', e)
+            setEx(e)
+            setOk(true)
+          }}
+        >
+          {ok && <p class="banner ok" style="margin:0">Informations enregistrées.</p>}
+        </Form>
+      )}
+      <hr />
+      <div class="section-title">Période</div>
+      <div class="chips" style="margin-bottom:10px">
+        {ps.map((p) => (
+          <button key={p.label} type="button" class={'btn small' + (p.du === du && p.au === au ? ' primary' : '')} onClick={() => { setDu(p.du); setAu(p.au) }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div class="filter-panel" style="padding:0;border:0;box-shadow:none;background:none;margin-bottom:12px">
+        <label><span>Du</span><input type="date" value={du} onInput={(e) => setDu(e.currentTarget.value)} /></label>
+        <label><span>Au</span><input type="date" value={au} onInput={(e) => setAu(e.currentTarget.value)} /></label>
+      </div>
+      <button class="primary" disabled={!du || !au || du > au} onClick={() => go(`/registre?du=${du}&au=${au}`)}>
+        <ClipboardList size={17} />Générer le registre ({n} traitement{n > 1 ? 's' : ''})
+      </button>
+    </Card>
   )
 }

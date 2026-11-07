@@ -81,14 +81,16 @@ export function FormSoin({ data, id, animal, produit, delai: delai0 }: { data: D
     { name: 'type', label: 'Type', type: 'select', options: TYPES },
     { name: 'produit', label: 'Produit', placeholder: 'ex. Bovilis BVD' },
     { name: 'dose', label: 'Dose', placeholder: 'ex. 2 ml' },
+    { name: 'veterinaire', label: 'Vétérinaire prescripteur', placeholder: 'facultatif — pour le registre' },
+    { name: 'ordonnance', label: "N° ou date de l'ordonnance", placeholder: 'facultatif — pour le registre' },
     { name: 'delaiJours', label: "Délai d'attente viande (jours)", type: 'number', hint: "0 si aucun. Vérifiez l'ordonnance ou la notice." },
     { name: 'rappelDate', label: 'Date du rappel', type: 'date', hint: 'Laissez vide s’il n’y a pas de rappel.' },
     { name: 'rappelFait', label: 'Rappel effectué', type: 'checkbox', show: (v) => !!v.rappelDate },
     { name: 'notes', label: 'Notes', type: 'textarea' },
   ]
   const initial: Values = cur
-    ? { date: cur.date, type: cur.type, produit: cur.produit, dose: cur.dose, delaiJours: String(cur.delaiJours), rappelDate: cur.rappelDate, rappelFait: cur.rappelFait, notes: cur.notes }
-    : { date: isoToday(), type: 'vaccin', produit: produit ?? '', dose: '', delaiJours: delai0 ?? '0', rappelDate: '', rappelFait: false, notes: '' }
+    ? { date: cur.date, type: cur.type, produit: cur.produit, dose: cur.dose, veterinaire: cur.veterinaire ?? '', ordonnance: cur.ordonnance ?? '', delaiJours: String(cur.delaiJours), rappelDate: cur.rappelDate, rappelFait: cur.rappelFait, notes: cur.notes }
+    : { date: isoToday(), type: 'vaccin', produit: produit ?? '', dose: '', veterinaire: '', ordonnance: '', delaiJours: delai0 ?? '0', rappelDate: '', rappelFait: false, notes: '' }
   return (
     <Page title={cur ? 'Modifier le soin' : 'Nouveau soin'} back="/sante">
       <Card>
@@ -104,6 +106,7 @@ export function FormSoin({ data, id, animal, produit, delai: delai0 }: { data: D
             const delaiJours = Math.max(0, Math.round(Number(String(v.delaiJours).replace(',', '.')) || 0))
             await save<Soin>('soins', {
               ...(cur ?? {}), animalIds: sel, date: String(v.date), type: v.type as TypeSoin, produit: String(v.produit).trim(), dose: String(v.dose).trim(),
+              veterinaire: String(v.veterinaire ?? '').trim(), ordonnance: String(v.ordonnance ?? '').trim(),
               delaiJours, rappelDate: String(v.rappelDate), rappelFait: v.rappelDate ? !!v.rappelFait : false, notes: String(v.notes),
             } as Soin)
             go('/sante')
